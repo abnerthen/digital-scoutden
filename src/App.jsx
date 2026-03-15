@@ -1992,7 +1992,9 @@ export default function App() {
               ? '👥 Groups'
               : tab === "members" 
               ? "👤 Members"
-              : '📋 Log'}
+              : tab === "log"
+              ? '📋 Log'
+              : '📂 Categories'}
           </button>
         ))}
       </div>
@@ -2842,7 +2844,7 @@ export default function App() {
                 )}
               </div>
             ))}
-            
+
             <div style={{ 
               background: "#fff", 
               borderRadius: 14, 
