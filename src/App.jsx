@@ -498,6 +498,19 @@ function AddItemModal({ onClose, onAdd }) {
   const [qtyDisplay, setQtyDisplay] = useState('1');
   const [unit, setUnit] = useState('units');
   const [notes, setNotes] = useState('');
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef();
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = ev => setImagePreview(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
   return (
     <Overlay>
       <div
@@ -583,6 +596,16 @@ function AddItemModal({ onClose, onAdd }) {
             ))}
           </select>
         </div>
+      </div>
+            <label style={labelStyle}>Item Photo (optional)</label>
+      <div
+        onClick={() => fileRef.current.click()}
+        style={{ border: `2px dashed #ddd`, borderRadius: 10, padding: "16px", textAlign: "center", cursor: "pointer", background: "#fafafa", marginTop: 4 }}>
+        {imagePreview
+          ? <img src={imagePreview} alt="preview" style={{ maxHeight: 140, maxWidth: "100%", borderRadius: 8 }} />
+          : <><div style={{ fontSize: 28, marginBottom: 4 }}>🖼️</div><p style={{ margin: 0, color: "#aaa", fontSize: 13 }}>Click to upload a photo</p></>
+        }
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
       </div>
       <label style={labelStyle}>Notes</label>
       <textarea
@@ -1657,6 +1680,13 @@ export default function App() {
       notes: data.notes || null,
       removed: false,
     })
+
+    // upload image if one was selected
+    if (data.imageFile) {
+      const imageUrl = await uploadItemImage(data.imageFile, newItem.id)
+      await updateItem(newItem.id, { image_url: imageUrl })
+      newItem.image_url = imageUrl
+    }
     setItems((prev) => [...prev, newItem]);
     await addLog({
       type: 'ADD',
@@ -2104,7 +2134,7 @@ export default function App() {
                 >
                   {item.image && (
                     <img
-                      src={item.image}
+                      src={item.imageUrl || item.image}
                       alt={item.name}
                       style={{
                         width: '100%',
