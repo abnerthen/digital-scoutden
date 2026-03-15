@@ -1,0 +1,2976 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { getItems } from './lib/items';
+import { getGroups } from './lib/groups';
+import { getLog } from './lib/log';
+import { getOpenTransactions } from './lib/transactions';
+
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const ACCENT = '#2e7d32';
+const ACCENT2 = '#ff8f00';
+const BG = '#f5f0e8';
+const DARK = '#1a1a1a';
+const CATEGORIES = [
+  'Shelter',
+  'Bedding',
+  'Safety',
+  'Cooking',
+  'Navigation',
+  'Clothing',
+  'Tools',
+  'Storage',
+  'Models',
+  'Other',
+];
+
+const initialItems = [
+  {
+    id: 1,
+    name: 'Tent (4-person)',
+    category: 'Shelter',
+    quantity: 6,
+    totalOwned: 6,
+    unit: 'units',
+    image: null,
+    removed: false,
+  },
+  {
+    id: 2,
+    name: 'Sleeping Bags',
+    category: 'Bedding',
+    quantity: 20,
+    totalOwned: 20,
+    unit: 'units',
+    image: null,
+    removed: false,
+  },
+  {
+    id: 3,
+    name: 'First Aid Kit',
+    category: 'Safety',
+    quantity: 4,
+    totalOwned: 4,
+    unit: 'kits',
+    image: null,
+    removed: false,
+  },
+  {
+    id: 4,
+    name: 'Cooking Pot (large)',
+    category: 'Cooking',
+    quantity: 8,
+    totalOwned: 8,
+    unit: 'units',
+    image: null,
+    removed: false,
+  },
+  {
+    id: 5,
+    name: 'Compass',
+    category: 'Navigation',
+    quantity: 15,
+    totalOwned: 15,
+    unit: 'units',
+    image: null,
+    removed: false,
+  },
+];
+
+// ─── Shared styles ─────────────────────────────────────────────────────────────
+const labelStyle = {
+  display: 'block',
+  fontSize: 12,
+  fontWeight: 700,
+  color: '#555',
+  marginBottom: 4,
+  marginTop: 12,
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+};
+const inputStyle = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '9px 12px',
+  border: '1.5px solid #ddd',
+  borderRadius: 8,
+  fontSize: 14,
+  fontFamily: 'inherit',
+  outline: 'none',
+  background: '#fafafa',
+};
+const btnBase = {
+  border: 'none',
+  borderRadius: 10,
+  fontWeight: 700,
+  fontSize: 15,
+  cursor: 'pointer',
+  padding: '11px 0',
+};
+
+// ─── Badge ─────────────────────────────────────────────────────────────────────
+function Badge({ type }) {
+  const map = {
+    IN: { bg: '#e8f5e9', color: '#2e7d32', label: '▲ IN' },
+    OUT: { bg: '#fff3e0', color: '#e65100', label: '▼ OUT' },
+    ADD: { bg: '#e3f2fd', color: '#1565c0', label: '+ NEW' },
+    WRITEOFF: { bg: '#fce4ec', color: '#c62828', label: '✕ WRITE-OFF' },
+    DELETE: { bg: '#f3e5f5', color: '#6a1b9a', label: '✕ ARCHIVED' },
+  };
+  const s = map[type] || map.ADD;
+  return (
+    <span
+      style={{
+        background: s.bg,
+        color: s.color,
+        borderRadius: 6,
+        padding: '2px 8px',
+        fontSize: 11,
+        fontWeight: 700,
+        fontFamily: 'monospace',
+        letterSpacing: 1,
+      }}
+    >
+      {s.label}
+    </span>
+  );
+}
+
+// ─── Overlay wrapper ───────────────────────────────────────────────────────────
+function Overlay({ children, wide }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.52)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 16,
+          width: wide ? 680 : 440,
+          maxWidth: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: 28,
+          boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Check-out / Check-in Modal ────────────────────────────────────────────────
+function MovementModal({ item, type, groups, onClose, onConfirm }) {
+  const maxIn = item.totalOwned - item.quantity;
+  const [qty, setQty] = useState(1);
+  const [qtyDisplay, setQtyDisplay] = useState('1');
+  const [groupId, setGroupId] = useState('');
+  const [freeScout, setFreeScout] = useState('');
+  const [event, setEvent] = useState('');
+  const [notes, setNotes] = useState('');
+  const max = type === 'OUT' ? item.quantity : maxIn;
+  const selectedGroup = groups.find((g) => g.id === groupId);
+
+  return (
+    <Overlay>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 20,
+          }}
+        >
+          {type === 'IN' ? '▲ Check In' : '▼ Check Out'}: {item.name}
+        </h2>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 22,
+            cursor: 'pointer',
+            color: '#888',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        <div
+          style={{
+            flex: 1,
+            background: '#f5f0e8',
+            borderRadius: 8,
+            padding: '8px 12px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            In Store
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: "'Playfair Display',serif",
+              color: ACCENT,
+            }}
+          >
+            {item.quantity}
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            background: '#f5f0e8',
+            borderRadius: 8,
+            padding: '8px 12px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            Total Owned
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: "'Playfair Display',serif",
+            }}
+          >
+            {item.totalOwned}
+          </div>
+        </div>
+        {type === 'IN' && (
+          <div
+            style={{
+              flex: 1,
+              background: '#e8f5e9',
+              borderRadius: 8,
+              padding: '8px 12px',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                color: '#888',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              Can Return
+            </div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                fontFamily: "'Playfair Display',serif",
+                color: ACCENT,
+              }}
+            >
+              {maxIn}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <label style={labelStyle}>
+        Quantity {type === 'IN' ? `(max ${maxIn})` : `(max ${item.quantity})`}
+      </label>
+      <input
+        type="number"
+        min={1}
+        max={max}
+        value={qtyDisplay}
+        onChange={(e) => {
+          setQtyDisplay(e.target.value);
+          const num = parseInt(e.target.value);
+          if (!isNaN(num)) setQty(num);
+        }}
+        onBlur={() => setQtyDisplay(String(qty))}
+        style={inputStyle}
+      />
+
+      <label style={labelStyle}>Assign to Group</label>
+      <select
+        value={groupId}
+        onChange={(e) => setGroupId(e.target.value)}
+        style={inputStyle}
+      >
+        <option value="">— No group / individual —</option>
+        {groups.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.name} ({g.type === 'led' ? 'Led' : 'Collective'},{' '}
+            {g.members.length} members)
+          </option>
+        ))}
+      </select>
+
+      {selectedGroup && (
+        <div
+          style={{
+            background: '#f0f7f0',
+            border: '1px solid #c8e6c9',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginTop: 10,
+            fontSize: 13,
+          }}
+        >
+          <strong style={{ color: ACCENT }}>
+            {selectedGroup.type === 'led'
+              ? `Leader: ${
+                  selectedGroup.members.find((m) => m.isLeader)?.name || '—'
+                }`
+              : `Collective responsibility (${selectedGroup.members.length} members)`}
+          </strong>
+          <p style={{ margin: '4px 0 0', color: '#555' }}>
+            Members: {selectedGroup.members.map((m) => m.name).join(', ')}
+          </p>
+        </div>
+      )}
+
+      {!groupId && (
+        <>
+          <label style={labelStyle}>Scout / Individual Name</label>
+          <input
+            placeholder="e.g. Ahmad bin Razak"
+            value={freeScout}
+            onChange={(e) => setFreeScout(e.target.value)}
+            style={inputStyle}
+          />
+        </>
+      )}
+
+      <label style={labelStyle}>Event / Activity</label>
+      <input
+        placeholder="e.g. Campfire Night 2025"
+        value={event}
+        onChange={(e) => setEvent(e.target.value)}
+        style={inputStyle}
+      />
+
+      <label style={labelStyle}>Notes</label>
+      <textarea
+        rows={2}
+        placeholder="Optional…"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ ...inputStyle, resize: 'vertical' }}
+      />
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() =>
+            onConfirm({
+              qty,
+              groupId,
+              groupName: selectedGroup?.name || freeScout,
+              event,
+              notes,
+            })
+          }
+          style={{
+            ...btnBase,
+            flex: 2,
+            background: type === 'IN' ? ACCENT : ACCENT2,
+            color: '#fff',
+          }}
+        >
+          Confirm {type === 'IN' ? 'Check In' : 'Check Out'}
+        </button>
+      </div>
+    </Overlay>
+  );
+}
+
+// ─── Write-off Modal ───────────────────────────────────────────────────────────
+function WriteOffModal({ item, onClose, onConfirm }) {
+  const [qty, setQty] = useState(1);
+  const [qtyDisplay, setQtyDisplay] = useState('1');
+  const [reason, setReason] = useState('');
+  const max = item.quantity;
+  return (
+    <Overlay>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 8,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 20,
+            color: '#c62828',
+          }}
+        >
+          ✕ Write Off Units
+        </h2>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 22,
+            cursor: 'pointer',
+            color: '#888',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <p
+        style={{
+          color: '#555',
+          marginBottom: 16,
+          lineHeight: 1.5,
+          fontSize: 14,
+        }}
+      >
+        Permanently reduce stock of <strong>{item.name}</strong>. The item stays
+        in inventory — only the unit count drops.
+      </p>
+
+      <label style={labelStyle}>Units to write off (max {item.quantity})</label>
+      <input
+        type="number"
+        min={1}
+        max={item.quantity}
+        value={qtyDisplay}
+        onChange={(e) => {
+          setQtyDisplay(e.target.value);
+          const num = parseInt(e.target.value);
+          if (!isNaN(num)) setQty(Math.max(1, Math.min(max, num)));
+        }}
+        onBlur={() => setQtyDisplay(String(qty))}
+        style={inputStyle}
+      />
+
+      <label style={labelStyle}>Reason</label>
+      <select
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        style={inputStyle}
+      >
+        <option value="">Select a reason…</option>
+        <option>Damaged / broken</option>
+        <option>Lost at activity</option>
+        <option>Worn out / end of life</option>
+        <option>Stolen</option>
+        <option>Other</option>
+      </select>
+
+      <div
+        style={{
+          background: '#fff8e1',
+          border: '1px solid #ffe082',
+          borderRadius: 8,
+          padding: '10px 14px',
+          margin: '14px 0',
+          fontSize: 13,
+          color: '#7a5800',
+        }}
+      >
+        ⚠️ Stock will go from <strong>{item.quantity}</strong> →{' '}
+        <strong>{item.quantity - qty}</strong> {item.unit}. This cannot be
+        undone.
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!reason}
+          onClick={() => onConfirm({ qty, reason })}
+          style={{
+            ...btnBase,
+            flex: 2,
+            background: reason ? '#c62828' : '#eee',
+            color: reason ? '#fff' : '#aaa',
+            cursor: reason ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Write Off {qty} {item.unit}
+        </button>
+      </div>
+    </Overlay>
+  );
+}
+
+// ─── Add Item Modal (new purchase) ────────────────────────────────────────────
+function AddItemModal({ onClose, onAdd }) {
+  const [name, setName] = useState('');
+  const [cat, setCat] = useState('Other');
+  const [qty, setQty] = useState(1);
+  const [qtyDisplay, setQtyDisplay] = useState('1');
+  const [unit, setUnit] = useState('units');
+  const [notes, setNotes] = useState('');
+  return (
+    <Overlay>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 8,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 20,
+          }}
+        >
+          🛒 New Purchase
+        </h2>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 22,
+            cursor: 'pointer',
+            color: '#888',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <p
+        style={{
+          margin: '0 0 16px',
+          color: '#777',
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        Use this to record a brand-new item being bought for the troop. Both the
+        total owned count and in-store count will be set to the quantity
+        purchased.
+      </p>
+      <label style={labelStyle}>Item Name *</label>
+      <input
+        placeholder="e.g. Rope (50m)"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        style={inputStyle}
+      />
+      <label style={labelStyle}>Category</label>
+      <select
+        value={cat}
+        onChange={(e) => setCat(e.target.value)}
+        style={inputStyle}
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c}>{c}</option>
+        ))}
+      </select>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={labelStyle}>Quantity Purchased</label>
+          <input
+            type="number"
+            min={1}
+            value={qtyDisplay}
+            onChange={(e) => {
+              setQtyDisplay(e.target.value);
+              const num = parseInt(e.target.value);
+              if (!isNaN(num)) setQty(Math.max(1, num));
+            }}
+            onBlur={() => setQtyDisplay(String(qty))}
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={labelStyle}>Unit</label>
+          <select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            style={inputStyle}
+          >
+            {['units', 'kits', 'pairs', 'sets', 'rolls', 'bags'].map((u) => (
+              <option key={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <label style={labelStyle}>Notes</label>
+      <textarea
+        rows={2}
+        placeholder="Storage location, supplier…"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ ...inputStyle, resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!name.trim()}
+          onClick={() => {
+            if (name.trim()) {
+              onAdd({ name, category: cat, quantity: qty, unit, notes });
+              onClose();
+            }
+          }}
+          style={{
+            ...btnBase,
+            flex: 2,
+            background: name.trim() ? ACCENT : '#eee',
+            color: name.trim() ? '#fff' : '#aaa',
+            cursor: name.trim() ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Record Purchase
+        </button>
+      </div>
+    </Overlay>
+  );
+}
+
+// ─── Buy More Modal (restock existing item) ────────────────────────────────────
+function BuyMoreModal({ item, onClose, onConfirm }) {
+  const [qty, setQty] = useState(1);
+  const [qtyDisplay, setQtyDisplay] = useState('1');
+  const [receiveNow, setReceiveNow] = useState(true);
+  const [notes, setNotes] = useState('');
+  return (
+    <Overlay>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 8,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 20,
+            color: ACCENT,
+          }}
+        >
+          🛒 Buy More: {item.name}
+        </h2>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 22,
+            cursor: 'pointer',
+            color: '#888',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <p
+        style={{
+          margin: '0 0 16px',
+          color: '#777',
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        Records additional units being purchased. Total owned will increase.
+        Optionally receive them into the storeroom now.
+      </p>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
+        <div
+          style={{
+            flex: 1,
+            background: '#f5f0e8',
+            borderRadius: 8,
+            padding: '8px 12px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            Currently Owned
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: "'Playfair Display',serif",
+            }}
+          >
+            {item.totalOwned} {item.unit}
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            background: '#e8f5e9',
+            borderRadius: 8,
+            padding: '8px 12px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            After Purchase
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: "'Playfair Display',serif",
+              color: ACCENT,
+            }}
+          >
+            {item.totalOwned + qty} {item.unit}
+          </div>
+        </div>
+      </div>
+
+      <label style={labelStyle}>Units Being Purchased</label>
+      <input
+        type="number"
+        min={1}
+        value={qtyDisplay}
+        onChange={(e) => {
+          setQtyDisplay(e.target.value);
+          const num = parseInt(e.target.value);
+          if (!isNaN(num)) setQty(Math.max(1, num));
+        }}
+        onBlur={() => setQtyDisplay(String(qty))}
+        style={inputStyle}
+      />
+
+      <div
+        onClick={() => setReceiveNow((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginTop: 14,
+          cursor: 'pointer',
+          padding: '10px 14px',
+          borderRadius: 8,
+          background: receiveNow ? '#f0f7f0' : '#fafafa',
+          border: `1.5px solid ${receiveNow ? '#c8e6c9' : '#e0e0e0'}`,
+          transition: 'all 0.15s',
+        }}
+      >
+        <div
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            background: receiveNow ? ACCENT : '#ddd',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {receiveNow && (
+            <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>
+              ✓
+            </span>
+          )}
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>
+            Receive into storeroom now
+          </div>
+          <div style={{ fontSize: 12, color: '#777' }}>
+            Uncheck if items are ordered but not yet delivered
+          </div>
+        </div>
+      </div>
+
+      <label style={labelStyle}>Notes</label>
+      <textarea
+        rows={2}
+        placeholder="Supplier, order ref…"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ ...inputStyle, resize: 'vertical' }}
+      />
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => onConfirm({ qty, receiveNow, notes })}
+          style={{ ...btnBase, flex: 2, background: ACCENT, color: '#fff' }}
+        >
+          Confirm Purchase
+        </button>
+      </div>
+    </Overlay>
+  );
+}
+
+// ─── Remove Item Modal ─────────────────────────────────────────────────────────
+function RemoveItemModal({ item, onClose, onConfirm }) {
+  const [reason, setReason] = useState('');
+  return (
+    <Overlay>
+      <h2
+        style={{
+          margin: '0 0 8px',
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 20,
+          color: '#c62828',
+        }}
+      >
+        🗑️ Archive Item
+      </h2>
+      <p
+        style={{
+          color: '#555',
+          marginBottom: 16,
+          lineHeight: 1.5,
+          fontSize: 14,
+        }}
+      >
+        <strong>{item.name}</strong> will be archived. All past log entries are
+        preserved.
+      </p>
+      <label style={labelStyle}>Reason</label>
+      <select
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        style={inputStyle}
+      >
+        <option value="">Select a reason…</option>
+        <option>Lost</option>
+        <option>Damaged beyond repair</option>
+        <option>Disposed / Written off</option>
+        <option>Transferred to another troop</option>
+        <option>Other</option>
+      </select>
+      <div
+        style={{
+          background: '#fff8e1',
+          border: '1px solid #ffe082',
+          borderRadius: 8,
+          padding: '10px 14px',
+          margin: '14px 0',
+          fontSize: 13,
+          color: '#7a5800',
+        }}
+      >
+        ⚠️ This removes the item from active inventory. Log history is kept.
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!reason}
+          onClick={() => onConfirm(reason)}
+          style={{
+            ...btnBase,
+            flex: 2,
+            background: reason ? '#c62828' : '#eee',
+            color: reason ? '#fff' : '#aaa',
+            cursor: reason ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Archive Item
+        </button>
+      </div>
+    </Overlay>
+  );
+}
+
+// ─── Image Scan Modal ──────────────────────────────────────────────────────────
+function ImageAnalysisModal({ onClose, onResult }) {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const fileRef = useRef();
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPreview(ev.target.result);
+    reader.readAsDataURL(f);
+    setResult(null);
+  };
+
+  const analyse = async () => {
+    if (!file) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = () => rej(new Error('Read failed'));
+        r.readAsDataURL(file);
+      });
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: `You are a scout quartermaster assistant. Identify all camping/scout equipment visible. Return ONLY JSON:
+{"items":[{"name":"...","category":"Shelter|Bedding|Safety|Cooking|Navigation|Clothing|Tools|Other","estimatedQuantity":1,"unit":"units|kits|pairs|sets|rolls|bags","condition":"Good|Fair|Poor","notes":"..."}],"summary":"..."}`,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: file.type || 'image/jpeg',
+                    data: base64,
+                  },
+                },
+                {
+                  type: 'text',
+                  text: 'Identify all scout/camping items in this image.',
+                },
+              ],
+            },
+          ],
+        }),
+      });
+      const data = await response.json();
+      const text = data.content.map((i) => i.text || '').join('');
+      setResult(JSON.parse(text.replace(/```json|```/g, '').trim()));
+    } catch {
+      setError('Could not analyse image. Please try again.');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Overlay wide>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 22,
+          }}
+        >
+          📸 Scan Equipment from Image
+        </h2>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 22,
+            cursor: 'pointer',
+            color: '#888',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <div
+        onClick={() => fileRef.current.click()}
+        style={{
+          border: `2px dashed ${ACCENT}`,
+          borderRadius: 12,
+          padding: '24px 20px',
+          textAlign: 'center',
+          cursor: 'pointer',
+          background: '#f9fdf9',
+          marginBottom: 14,
+        }}
+      >
+        {preview ? (
+          <img
+            src={preview}
+            alt="preview"
+            style={{ maxHeight: 180, maxWidth: '100%', borderRadius: 8 }}
+          />
+        ) : (
+          <>
+            <div style={{ fontSize: 36, marginBottom: 6 }}>🖼️</div>
+            <p style={{ margin: 0, color: '#555' }}>Click to upload image</p>
+            <p style={{ margin: '4px 0 0', color: '#aaa', fontSize: 12 }}>
+              JPG, PNG, WEBP
+            </p>
+          </>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFile}
+          style={{ display: 'none' }}
+        />
+      </div>
+      {file && !result && (
+        <button
+          onClick={analyse}
+          disabled={loading}
+          style={{
+            ...btnBase,
+            width: '100%',
+            background: loading ? '#ccc' : ACCENT,
+            color: '#fff',
+            marginBottom: 12,
+          }}
+        >
+          {loading ? '🔍 Analysing…' : '🔍 Identify Items'}
+        </button>
+      )}
+      {error && <p style={{ color: 'red', fontSize: 13 }}>{error}</p>}
+      {result && (
+        <>
+          <p style={{ fontStyle: 'italic', color: '#555', marginBottom: 12 }}>
+            "{result.summary}"
+          </p>
+          {result.items.map((item, i) => (
+            <div
+              key={i}
+              style={{
+                border: '1px solid #e0e0e0',
+                borderRadius: 10,
+                padding: '10px 14px',
+                marginBottom: 8,
+                background: '#fafafa',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <strong style={{ fontFamily: "'Playfair Display',serif" }}>
+                  {item.name}
+                </strong>
+                <span
+                  style={{
+                    fontSize: 11,
+                    background: '#eee',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    color: '#666',
+                  }}
+                >
+                  {item.category}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: '#555', marginTop: 4 }}>
+                Qty:{' '}
+                <b>
+                  {item.estimatedQuantity} {item.unit}
+                </b>{' '}
+                · Condition:{' '}
+                <b
+                  style={{
+                    color:
+                      item.condition === 'Good'
+                        ? ACCENT
+                        : item.condition === 'Fair'
+                        ? ACCENT2
+                        : 'red',
+                  }}
+                >
+                  {item.condition}
+                </b>
+              </div>
+              {item.notes && (
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#777' }}>
+                  {item.notes}
+                </p>
+              )}
+            </div>
+          ))}
+          <button
+            onClick={() => {
+              onResult(result.items, preview);
+              onClose();
+            }}
+            style={{
+              ...btnBase,
+              width: '100%',
+              background: ACCENT2,
+              color: '#fff',
+              marginTop: 8,
+            }}
+          >
+            ＋ Add All to Inventory
+          </button>
+        </>
+      )}
+    </Overlay>
+  );
+}
+
+// ─── Group Manager Modal ───────────────────────────────────────────────────────
+function GroupModal({ group, onClose, onSave }) {
+  const isEdit = !!group;
+  const [name, setName] = useState(group?.name || '');
+  const [type, setType] = useState(group?.type || 'led');
+  const [members, setMembers] = useState(group?.members || []);
+  const [newMember, setNewMember] = useState('');
+
+  const addMember = () => {
+    const trimmed = newMember.trim();
+    if (
+      !trimmed ||
+      members.find((m) => m.name.toLowerCase() === trimmed.toLowerCase())
+    )
+      return;
+    const isFirst = members.length === 0;
+    setMembers((prev) => [
+      ...prev,
+      { id: Date.now(), name: trimmed, isLeader: isFirst && type === 'led' },
+    ]);
+    setNewMember('');
+  };
+
+  const removeMember = (id) => {
+    const wasLeader = members.find((m) => m.id === id)?.isLeader;
+    const updated = members.filter((m) => m.id !== id);
+    if (type === 'led' && wasLeader && updated.length > 0)
+      updated[0].isLeader = true;
+    setMembers(updated);
+  };
+
+  const setLeader = (id) =>
+    setMembers((prev) => prev.map((m) => ({ ...m, isLeader: m.id === id })));
+
+  return (
+    <Overlay wide>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 20,
+          }}
+        >
+          {isEdit ? '✎ Edit Group' : '👥 New Group'}
+        </h2>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: 22,
+            cursor: 'pointer',
+            color: '#888',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <label style={labelStyle}>Group Name *</label>
+      <input
+        placeholder="e.g. Eagle Patrol"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        style={inputStyle}
+      />
+
+      <label style={labelStyle}>Leadership Type</label>
+      <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+        {[
+          {
+            val: 'led',
+            icon: '👑',
+            title: 'Led Group',
+            desc: 'One designated leader holds responsibility',
+          },
+          {
+            val: 'collective',
+            icon: '🤝',
+            title: 'Collective',
+            desc: 'Responsibility shared equally among all members',
+          },
+        ].map((opt) => (
+          <div
+            key={opt.val}
+            onClick={() => {
+              setType(opt.val);
+              if (opt.val === 'collective')
+                setMembers((prev) =>
+                  prev.map((m) => ({ ...m, isLeader: false }))
+                );
+            }}
+            style={{
+              flex: 1,
+              border: `2px solid ${type === opt.val ? ACCENT : '#ddd'}`,
+              borderRadius: 10,
+              padding: '12px 14px',
+              cursor: 'pointer',
+              background: type === opt.val ? '#f0f7f0' : '#fafafa',
+              transition: 'all 0.15s',
+            }}
+          >
+            <div style={{ fontSize: 22 }}>{opt.icon}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, marginTop: 4 }}>
+              {opt.title}
+            </div>
+            <div style={{ fontSize: 12, color: '#777', marginTop: 2 }}>
+              {opt.desc}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <label style={{ ...labelStyle, marginTop: 18 }}>Members</label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <input
+          placeholder="Scout name…"
+          value={newMember}
+          onChange={(e) => setNewMember(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addMember()}
+          style={{ ...inputStyle, marginTop: 0 }}
+        />
+        <button
+          onClick={addMember}
+          style={{
+            padding: '9px 16px',
+            background: ACCENT,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 700,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          + Add
+        </button>
+      </div>
+
+      {members.length === 0 ? (
+        <p style={{ color: '#bbb', fontStyle: 'italic', fontSize: 13 }}>
+          No members yet.
+        </p>
+      ) : (
+        <div
+          style={{
+            border: '1px solid #e8e0d4',
+            borderRadius: 10,
+            overflow: 'hidden',
+          }}
+        >
+          {members.map((m, i) => (
+            <div
+              key={m.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 14px',
+                borderBottom:
+                  i < members.length - 1 ? '1px solid #f0ece4' : 'none',
+                background: m.isLeader && type === 'led' ? '#f0f7f0' : '#fff',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>
+                {type === 'led' && m.isLeader ? '👑' : '🧑'}
+              </span>
+              <span style={{ flex: 1, fontWeight: 600 }}>{m.name}</span>
+              {type === 'led' &&
+                (m.isLeader ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      background: '#c8e6c9',
+                      color: ACCENT,
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Leader
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setLeader(m.id)}
+                    style={{
+                      fontSize: 11,
+                      background: '#eee',
+                      color: '#555',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '3px 10px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Make Leader
+                  </button>
+                ))}
+              {type === 'collective' && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    background: '#e3f2fd',
+                    color: '#1565c0',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    fontWeight: 700,
+                  }}
+                >
+                  Responsible
+                </span>
+              )}
+              <button
+                onClick={() => removeMember(m.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#e57373',
+                  cursor: 'pointer',
+                  fontSize: 16,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+        <button
+          onClick={onClose}
+          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!name.trim()}
+          onClick={() => {
+            if (name.trim()) {
+              onSave({ name, type, members });
+              onClose();
+            }
+          }}
+          style={{
+            ...btnBase,
+            flex: 2,
+            background: name.trim() ? ACCENT : '#eee',
+            color: name.trim() ? '#fff' : '#aaa',
+            cursor: name.trim() ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {isEdit ? 'Save Changes' : 'Create Group'}
+        </button>
+      </div>
+    </Overlay>
+  );
+}
+
+// ─── Group Detail Modal ────────────────────────────────────────────────────────
+function GroupDetailModal({ group, onClose, onEdit }) {
+  const outstanding = group.checkouts || [];
+  const totalUnits = outstanding.reduce((a, c) => a + c.qty, 0);
+
+  return (
+    <Overlay wide>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontFamily: "'Playfair Display',serif",
+              fontSize: 22,
+            }}
+          >
+            {group.name}
+          </h2>
+          <span style={{ fontSize: 12, color: '#888' }}>
+            {group.type === 'led' ? '👑 Led Group' : '🤝 Collective Group'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={onEdit}
+            style={{
+              padding: '7px 14px',
+              background: '#f0f0f0',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            ✎ Edit
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: 22,
+              cursor: 'pointer',
+              color: '#888',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        <div
+          style={{
+            background: '#f5f0e8',
+            borderRadius: 10,
+            padding: '12px 16px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              color: '#888',
+              fontWeight: 700,
+            }}
+          >
+            Members
+          </div>
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 900,
+              fontFamily: "'Playfair Display',serif",
+            }}
+          >
+            {group.members.length}
+          </div>
+        </div>
+        <div
+          style={{
+            background: outstanding.length > 0 ? '#fff3e0' : '#f5f0e8',
+            borderRadius: 10,
+            padding: '12px 16px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              color: '#888',
+              fontWeight: 700,
+            }}
+          >
+            Items Out
+          </div>
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 900,
+              fontFamily: "'Playfair Display',serif",
+              color: outstanding.length > 0 ? '#e65100' : DARK,
+            }}
+          >
+            {outstanding.length} types · {totalUnits} units
+          </div>
+        </div>
+      </div>
+
+      <h4
+        style={{
+          margin: '0 0 8px',
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 15,
+        }}
+      >
+        Members
+      </h4>
+      <div
+        style={{
+          border: '1px solid #e8e0d4',
+          borderRadius: 10,
+          overflow: 'hidden',
+          marginBottom: 20,
+        }}
+      >
+        {group.members.length === 0 ? (
+          <p
+            style={{
+              padding: '12px 16px',
+              color: '#bbb',
+              fontStyle: 'italic',
+              margin: 0,
+            }}
+          >
+            No members.
+          </p>
+        ) : (
+          group.members.map((m, i) => (
+            <div
+              key={m.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 14px',
+                borderBottom:
+                  i < group.members.length - 1 ? '1px solid #f0ece4' : 'none',
+              }}
+            >
+              <span>{group.type === 'led' && m.isLeader ? '👑' : '🧑'}</span>
+              <span style={{ flex: 1 }}>{m.name}</span>
+              {group.type === 'led' && m.isLeader && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    background: '#c8e6c9',
+                    color: ACCENT,
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    fontWeight: 700,
+                  }}
+                >
+                  Leader
+                </span>
+              )}
+              {group.type === 'collective' && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    background: '#e3f2fd',
+                    color: '#1565c0',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    fontWeight: 700,
+                  }}
+                >
+                  Responsible
+                </span>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      <h4
+        style={{
+          margin: '0 0 8px',
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 15,
+        }}
+      >
+        Outstanding Checkouts
+      </h4>
+      {outstanding.length === 0 ? (
+        <p style={{ color: '#bbb', fontStyle: 'italic', fontSize: 13 }}>
+          No items currently checked out.
+        </p>
+      ) : (
+        <div
+          style={{
+            border: '1px solid #ffe0b2',
+            borderRadius: 10,
+            overflow: 'hidden',
+          }}
+        >
+          {outstanding.map((c, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 14px',
+                borderBottom:
+                  i < outstanding.length - 1 ? '1px solid #fff3e0' : 'none',
+                background: '#fffbf7',
+              }}
+            >
+              <span style={{ fontSize: 20 }}>📦</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{c.itemName}</div>
+                <div style={{ fontSize: 12, color: '#888' }}>
+                  Checked out {new Date(c.date).toLocaleDateString()}
+                  {c.event ? ` · ${c.event}` : ''}
+                </div>
+              </div>
+              <span style={{ fontWeight: 700, color: '#e65100' }}>
+                {c.qty} {c.unit}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Overlay>
+  );
+}
+
+// ─── Main App ──────────────────────────────────────────────────────────────────
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [log, setLog] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [modal, setModal] = useState(null);
+  const [activeTab, setActiveTab] = useState('inventory');
+  const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState('All');
+  const [showRemoved, setShowRemoved] = useState(false);
+  const nextId = useRef(200);
+  const [loading, setLoading] = useState([]);
+
+  useEffect(() => {
+    async function load() {
+      const [itemsData, groupsData, logData, txData] = await Promise.all([
+        getItems(),
+        getGroups(),
+        getLog(),
+        getOpenTransactions(),
+      ])
+      setItems(itemsData);
+      setGroups(groupsData);
+      setLog(logData);
+      setTransactions(txData);
+      setLoading(false);
+    }
+    load();
+  }, [])
+
+  if (loading) return (
+    <div style={{ padding: 40, fontFamily: 'serif' }}>Loading storeroom...</div>
+  )
+
+  const addLog = (entry) =>
+    setLog((prev) => [{ ...entry, id: Date.now(), ts: new Date() }, ...prev]);
+
+  // ── Item handlers ──
+  const handleMove = (
+    item,
+    type,
+    { qty, groupId, groupName, event, notes }
+  ) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              quantity: type === 'IN' ? i.quantity + qty : i.quantity - qty,
+            }
+          : i
+      )
+    );
+
+    if (type === 'OUT' && groupId) {
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                checkouts: [
+                  ...(g.checkouts || []),
+                  {
+                    itemId: item.id,
+                    itemName: item.name,
+                    unit: item.unit,
+                    qty,
+                    date: Date.now(),
+                    event,
+                  },
+                ],
+              }
+            : g
+        )
+      );
+    }
+    if (type === 'IN' && groupId) {
+      setGroups((prev) =>
+        prev.map((g) => {
+          if (g.id !== groupId) return g;
+          const idx = (g.checkouts || []).findIndex(
+            (c) => c.itemId === item.id
+          );
+          if (idx === -1) return g;
+          const updated = [...g.checkouts];
+          updated.splice(idx, 1);
+          return { ...g, checkouts: updated };
+        })
+      );
+    }
+
+    addLog({
+      type,
+      itemName: item.name,
+      qty,
+      unit: item.unit,
+      scout: groupName || '—',
+      notes,
+      event,
+    });
+    setModal(null);
+  };
+
+  const handleWriteOff = (item, { qty, reason }) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? { ...i, quantity: i.quantity - qty, totalOwned: i.totalOwned - qty }
+          : i
+      )
+    );
+    addLog({
+      type: 'WRITEOFF',
+      itemName: item.name,
+      qty,
+      unit: item.unit,
+      scout: 'Quartermaster',
+      notes: reason,
+      event: 'Write-off',
+    });
+    setModal(null);
+  };
+
+  const handleAddItem = (data) => {
+    const newItem = {
+      ...data,
+      totalOwned: data.quantity,
+      id: nextId.current++,
+      image: null,
+      removed: false,
+    };
+    setItems((prev) => [...prev, newItem]);
+    addLog({
+      type: 'ADD',
+      itemName: data.name,
+      qty: data.quantity,
+      unit: data.unit,
+      scout: 'Quartermaster',
+      notes: data.notes || '',
+      event: 'New purchase',
+    });
+  };
+
+  const handleBuyMore = (item, { qty, receiveNow, notes }) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              totalOwned: i.totalOwned + qty,
+              quantity: receiveNow ? i.quantity + qty : i.quantity,
+            }
+          : i
+      )
+    );
+    addLog({
+      type: 'ADD',
+      itemName: item.name,
+      qty,
+      unit: item.unit,
+      scout: 'Quartermaster',
+      notes,
+      event: receiveNow
+        ? 'Purchased & received'
+        : 'Purchased (pending delivery)',
+    });
+    setModal(null);
+  };
+
+  const handleRemoveItem = (item, reason) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, removed: true, removedReason: reason } : i
+      )
+    );
+    addLog({
+      type: 'DELETE',
+      itemName: item.name,
+      qty: item.quantity,
+      unit: item.unit,
+      scout: 'Quartermaster',
+      notes: reason,
+      event: 'Item archived',
+    });
+    setModal(null);
+  };
+
+  const handleScanResult = (scannedItems, imagePreview) => {
+    scannedItems.forEach((si) => {
+      const existing = items.find(
+        (i) => i.name.toLowerCase() === si.name.toLowerCase()
+      );
+      if (existing) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === existing.id
+              ? {
+                  ...i,
+                  quantity: i.quantity + si.estimatedQuantity,
+                  totalOwned: i.totalOwned + si.estimatedQuantity,
+                }
+              : i
+          )
+        );
+        addLog({
+          type: 'IN',
+          itemName: si.name,
+          qty: si.estimatedQuantity,
+          unit: si.unit,
+          scout: 'Image Scan',
+          notes: si.notes,
+          event: 'Scanned from image',
+        });
+      } else {
+        const newItem = {
+          id: nextId.current++,
+          name: si.name,
+          category: si.category,
+          quantity: si.estimatedQuantity,
+          totalOwned: si.estimatedQuantity,
+          unit: si.unit,
+          image: imagePreview,
+          removed: false,
+        };
+        setItems((prev) => [...prev, newItem]);
+        addLog({
+          type: 'ADD',
+          itemName: si.name,
+          qty: si.estimatedQuantity,
+          unit: si.unit,
+          scout: 'Image Scan',
+          notes: si.notes,
+          event: 'Added from image scan',
+        });
+      }
+    });
+  };
+
+  // ── Group handlers ──
+  const handleSaveGroup = (data, editId) => {
+    if (editId) {
+      setGroups((prev) =>
+        prev.map((g) => (g.id === editId ? { ...g, ...data } : g))
+      );
+    } else {
+      setGroups((prev) => [
+        ...prev,
+        { ...data, id: nextId.current++, checkouts: [] },
+      ]);
+    }
+  };
+
+  // ── Derived ──
+  const activeItems = items.filter((i) => !i.removed);
+  const removedItems = items.filter((i) => i.removed);
+  const displayItems = (showRemoved ? removedItems : activeItems).filter(
+    (i) => {
+      const s = search.toLowerCase();
+      return (
+        (i.name.toLowerCase().includes(s) ||
+          i.category.toLowerCase().includes(s)) &&
+        (filterCat === 'All' || i.category === filterCat)
+      );
+    }
+  );
+  const lowStock = activeItems.filter((i) => i.quantity <= 2);
+  const totalUnits = activeItems.reduce((a, b) => a + b.quantity, 0);
+  const groupsWithItems = groups.filter((g) => (g.checkouts || []).length > 0);
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: BG,
+        fontFamily: "'Source Serif 4', Georgia, serif",
+      }}
+    >
+      <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap"
+        rel="stylesheet"
+      />
+
+      {/* HEADER */}
+      <header
+        style={{
+          background: DARK,
+          color: '#fff',
+          padding: '0 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: `4px solid ${ACCENT2}`,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            padding: '14px 0',
+          }}
+        >
+          <span style={{ fontSize: 34 }}>⚜️</span>
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontFamily: "'Playfair Display',serif",
+                fontSize: 21,
+                letterSpacing: 0.5,
+              }}
+            >
+              Storeroom Ledger
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 11,
+                color: '#aaa',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              Scout Quartermaster System
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setModal({ type: 'scan' })}
+            style={{
+              padding: '8px 14px',
+              background: ACCENT2,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            📸 Scan
+          </button>
+          <button
+            onClick={() => setModal({ type: 'addItem' })}
+            style={{
+              padding: '8px 14px',
+              background: ACCENT,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            ＋ Item
+          </button>
+          <button
+            onClick={() => setModal({ type: 'newGroup' })}
+            style={{
+              padding: '8px 14px',
+              background: '#455a64',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            👥 Group
+          </button>
+        </div>
+      </header>
+
+      {/* STATS */}
+      <div
+        style={{
+          background: '#fff',
+          borderBottom: '1px solid #e0e0e0',
+          padding: '10px 28px',
+          display: 'flex',
+          gap: 28,
+          flexWrap: 'wrap',
+        }}
+      >
+        {[
+          { label: 'Active Items', val: activeItems.length, icon: '📦' },
+          { label: 'Units in Store', val: totalUnits, icon: '🔢' },
+          { label: 'Groups', val: groups.length, icon: '👥' },
+          {
+            label: 'Groups w/ Items Out',
+            val: groupsWithItems.length,
+            icon: '📤',
+            alert: groupsWithItems.length > 0,
+          },
+          {
+            label: 'Low Stock',
+            val: lowStock.length,
+            icon: '⚠️',
+            alert: lowStock.length > 0,
+          },
+          { label: 'Log Entries', val: log.length, icon: '📋' },
+        ].map((s) => (
+          <div key={s.label} style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 18 }}>{s.icon}</div>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                fontFamily: "'Playfair Display',serif",
+                color: s.alert ? '#c62828' : DARK,
+              }}
+            >
+              {s.val}
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: '#888',
+                textTransform: 'uppercase',
+                letterSpacing: 0.4,
+              }}
+            >
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* TABS */}
+      <div
+        style={{
+          display: 'flex',
+          padding: '0 28px',
+          background: '#fff',
+          borderBottom: '1px solid #e0e0e0',
+        }}
+      >
+        {['inventory', 'groups', 'log'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '12px 22px',
+              border: 'none',
+              background: 'none',
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+              borderBottom:
+                activeTab === tab
+                  ? `3px solid ${ACCENT}`
+                  : '3px solid transparent',
+              color: activeTab === tab ? ACCENT : '#888',
+              fontFamily: 'inherit',
+              letterSpacing: 0.5,
+            }}
+          >
+            {tab === 'inventory'
+              ? '📦 Inventory'
+              : tab === 'groups'
+              ? '👥 Groups'
+              : '📋 Log'}
+          </button>
+        ))}
+      </div>
+
+      <main style={{ padding: '22px 28px', maxWidth: 1140, margin: '0 auto' }}>
+        {/* ── INVENTORY TAB ── */}
+        {activeTab === 'inventory' && (
+          <>
+            {lowStock.length > 0 && (
+              <div
+                style={{
+                  background: '#fff8e1',
+                  border: '1px solid #ffe082',
+                  borderRadius: 10,
+                  padding: '10px 18px',
+                  marginBottom: 18,
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: 20 }}>⚠️</span>
+                <div>
+                  <strong style={{ color: '#e65100' }}>Low Stock: </strong>
+                  <span style={{ color: '#555' }}>
+                    {lowStock
+                      .map((i) => `${i.name} (${i.quantity})`)
+                      .join(', ')}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                marginBottom: 18,
+                flexWrap: 'wrap',
+              }}
+            >
+              <input
+                placeholder="🔍 Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ flex: 1, minWidth: 180, ...inputStyle }}
+              />
+              <select
+                value={filterCat}
+                onChange={(e) => setFilterCat(e.target.value)}
+                style={{ ...inputStyle, width: 'auto', flex: 'none' }}
+              >
+                <option value="All">All Categories</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowRemoved((v) => !v)}
+                style={{
+                  padding: '9px 14px',
+                  background: showRemoved ? '#fce4ec' : '#f5f0e8',
+                  color: showRemoved ? '#c62828' : '#666',
+                  border: showRemoved
+                    ? '1.5px solid #ef9a9a'
+                    : '1.5px solid #ddd',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                {showRemoved ? '👁 Archived' : '🗑️ Show Archived'}
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                marginBottom: 14,
+                flexWrap: 'wrap',
+              }}
+            >
+              {[
+                {
+                  label: '▼ Out — Check out units',
+                  color: '#e65100',
+                  bg: '#fff3e0',
+                },
+                {
+                  label: '▲ In — Return units to store',
+                  color: '#2e7d32',
+                  bg: '#e8f5e9',
+                },
+                {
+                  label: '🛒 — Buy more units',
+                  color: '#1565c0',
+                  bg: '#e3f2fd',
+                },
+                {
+                  label: '✕ — Write off damaged/lost units',
+                  color: '#c62828',
+                  bg: '#fff3e0',
+                },
+                {
+                  label: '🗑 — Archive entire item',
+                  color: '#c62828',
+                  bg: '#fce4ec',
+                },
+              ].map((l) => (
+                <span
+                  key={l.label}
+                  style={{
+                    fontSize: 11,
+                    background: l.bg,
+                    color: l.color,
+                    borderRadius: 6,
+                    padding: '3px 9px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {l.label}
+                </span>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))',
+                gap: 14,
+              }}
+            >
+              {displayItems.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    background: item.removed ? '#fafafa' : '#fff',
+                    borderRadius: 14,
+                    border: item.removed
+                      ? '1px dashed #e0a0a0'
+                      : '1px solid #e8e0d4',
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    opacity: item.removed ? 0.75 : 1,
+                    transition: 'transform 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!item.removed)
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = '')}
+                >
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={{
+                        width: '100%',
+                        height: 110,
+                        objectFit: 'cover',
+                        filter: item.removed ? 'grayscale(60%)' : 'none',
+                      }}
+                    />
+                  )}
+                  <div style={{ padding: '13px 15px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <h3
+                        style={{
+                          margin: '0 0 3px',
+                          fontFamily: "'Playfair Display',serif",
+                          fontSize: 15,
+                          color: item.removed ? '#aaa' : DARK,
+                          textDecoration: item.removed
+                            ? 'line-through'
+                            : 'none',
+                        }}
+                      >
+                        {item.name}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: '#f0ece4',
+                          color: '#666',
+                          borderRadius: 6,
+                          padding: '2px 7px',
+                          flexShrink: 0,
+                          marginLeft: 6,
+                        }}
+                      >
+                        {item.category}
+                      </span>
+                    </div>
+                    {item.removed ? (
+                      <div
+                        style={{
+                          margin: '8px 0',
+                          padding: '7px 10px',
+                          background: '#fce4ec',
+                          borderRadius: 8,
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 12,
+                            color: '#c62828',
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✕ Archived
+                        </p>
+                        <p
+                          style={{
+                            margin: '2px 0 0',
+                            fontSize: 11,
+                            color: '#888',
+                          }}
+                        >
+                          {item.removedReason}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ margin: '6px 0 10px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'baseline',
+                              gap: 4,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 26,
+                                fontWeight: 900,
+                                fontFamily: "'Playfair Display',serif",
+                                color: item.quantity <= 2 ? '#c62828' : ACCENT,
+                              }}
+                            >
+                              {item.quantity}
+                            </span>
+                            <span style={{ fontSize: 12, color: '#888' }}>
+                              in store
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 13,
+                                color: '#bbb',
+                                margin: '0 2px',
+                              }}
+                            >
+                              /
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 16,
+                                fontWeight: 700,
+                                color: '#555',
+                              }}
+                            >
+                              {item.totalOwned}
+                            </span>
+                            <span style={{ fontSize: 12, color: '#888' }}>
+                              owned
+                            </span>
+                          </div>
+                          {item.quantity < item.totalOwned && (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: '#e65100',
+                                marginTop: 2,
+                              }}
+                            >
+                              {item.totalOwned - item.quantity} {item.unit}{' '}
+                              currently out
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() =>
+                              setModal({ type: 'move', item, moveType: 'OUT' })
+                            }
+                            disabled={item.quantity === 0}
+                            style={{
+                              flex: 1,
+                              padding: '7px 0',
+                              background:
+                                item.quantity === 0 ? '#eee' : '#fff3e0',
+                              color: item.quantity === 0 ? '#ccc' : '#e65100',
+                              border: 'none',
+                              borderRadius: 7,
+                              fontWeight: 700,
+                              cursor:
+                                item.quantity === 0 ? 'not-allowed' : 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            ▼ Out
+                          </button>
+                          <button
+                            onClick={() =>
+                              setModal({ type: 'move', item, moveType: 'IN' })
+                            }
+                            disabled={item.quantity >= item.totalOwned}
+                            title={
+                              item.quantity >= item.totalOwned
+                                ? 'All owned units are already in store'
+                                : 'Check units back in'
+                            }
+                            style={{
+                              flex: 1,
+                              padding: '7px 0',
+                              background:
+                                item.quantity >= item.totalOwned
+                                  ? '#eee'
+                                  : '#e8f5e9',
+                              color:
+                                item.quantity >= item.totalOwned
+                                  ? '#ccc'
+                                  : '#2e7d32',
+                              border: 'none',
+                              borderRadius: 7,
+                              fontWeight: 700,
+                              cursor:
+                                item.quantity >= item.totalOwned
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            ▲ In
+                          </button>
+                          <button
+                            onClick={() => setModal({ type: 'buyMore', item })}
+                            title="Buy more units"
+                            style={{
+                              padding: '7px 10px',
+                              background: '#e3f2fd',
+                              color: '#1565c0',
+                              border: '1.5px solid #90caf9',
+                              borderRadius: 7,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            🛒
+                          </button>
+                          <button
+                            onClick={() => setModal({ type: 'writeoff', item })}
+                            title="Write off damaged/lost units"
+                            style={{
+                              padding: '7px 10px',
+                              background: '#fff3e0',
+                              color: '#c62828',
+                              border: '1.5px solid #ffcc80',
+                              borderRadius: 7,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            ✕
+                          </button>
+                          <button
+                            onClick={() =>
+                              setModal({ type: 'removeItem', item })
+                            }
+                            title="Archive entire item"
+                            style={{
+                              padding: '7px 10px',
+                              background: '#fce4ec',
+                              color: '#c62828',
+                              border: '1.5px solid #ef9a9a',
+                              borderRadius: 7,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {displayItems.length === 0 && (
+                <p
+                  style={{
+                    color: '#aaa',
+                    fontStyle: 'italic',
+                    gridColumn: '1/-1',
+                  }}
+                >
+                  No items found.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── GROUPS TAB ── */}
+        {activeTab === 'groups' && (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 18,
+              }}
+            >
+              <p style={{ margin: 0, color: '#777', fontSize: 14 }}>
+                Manage patrols and assign item responsibility to groups.
+              </p>
+              <button
+                onClick={() => setModal({ type: 'newGroup' })}
+                style={{
+                  padding: '8px 16px',
+                  background: ACCENT,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                👥 New Group
+              </button>
+            </div>
+
+            {groups.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '60px 20px',
+                  color: '#bbb',
+                }}
+              >
+                <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+                <p style={{ fontStyle: 'italic', fontSize: 15 }}>
+                  No groups yet. Create a patrol or collective to track item
+                  responsibility.
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))',
+                  gap: 14,
+                }}
+              >
+                {groups.map((group) => {
+                  const out = group.checkouts || [];
+                  const leader = group.members.find((m) => m.isLeader);
+                  return (
+                    <div
+                      key={group.id}
+                      onClick={() => setModal({ type: 'groupDetail', group })}
+                      style={{
+                        background: '#fff',
+                        borderRadius: 14,
+                        border: '1px solid #e8e0d4',
+                        padding: '16px 18px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                        transition: 'transform 0.15s',
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.transform = 'translateY(-2px)')
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.transform = '')
+                      }
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <h3
+                          style={{
+                            margin: '0 0 4px',
+                            fontFamily: "'Playfair Display',serif",
+                            fontSize: 17,
+                          }}
+                        >
+                          {group.name}
+                        </h3>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            background:
+                              group.type === 'led' ? '#fff9c4' : '#e3f2fd',
+                            color: group.type === 'led' ? '#f57f17' : '#1565c0',
+                            borderRadius: 6,
+                            padding: '2px 8px',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {group.type === 'led' ? '👑 Led' : '🤝 Collective'}
+                        </span>
+                      </div>
+                      {group.type === 'led' && leader && (
+                        <p
+                          style={{
+                            margin: '0 0 8px',
+                            fontSize: 12,
+                            color: '#777',
+                          }}
+                        >
+                          Leader: <strong>{leader.name}</strong>
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontFamily: "'Playfair Display',serif",
+                              fontSize: 20,
+                            }}
+                          >
+                            {group.members.length}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: '#888',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            Members
+                          </div>
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontFamily: "'Playfair Display',serif",
+                              fontSize: 20,
+                              color: out.length > 0 ? '#e65100' : DARK,
+                            }}
+                          >
+                            {out.length}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: '#888',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            Items Out
+                          </div>
+                        </div>
+                      </div>
+                      {out.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: '7px 10px',
+                            background: '#fff3e0',
+                            borderRadius: 8,
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 12,
+                              color: '#e65100',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Outstanding: {out.map((c) => c.itemName).join(', ')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── LOG TAB ── */}
+        {activeTab === 'log' && (
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              border: '1px solid #e8e0d4',
+              overflow: 'hidden',
+            }}
+          >
+            {log.length === 0 ? (
+              <p
+                style={{
+                  textAlign: 'center',
+                  color: '#bbb',
+                  padding: 48,
+                  fontStyle: 'italic',
+                }}
+              >
+                No movements recorded yet.
+              </p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr
+                      style={{
+                        background: '#f5f0e8',
+                        borderBottom: '2px solid #e0d8cc',
+                      }}
+                    >
+                      {[
+                        'Time',
+                        'Type',
+                        'Item',
+                        'Qty',
+                        'Scout / Group',
+                        'Event',
+                        'Notes',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: '11px 13px',
+                            textAlign: 'left',
+                            fontSize: 11,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.7,
+                            color: '#888',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {log.map((entry, i) => (
+                      <tr
+                        key={entry.id}
+                        style={{
+                          borderBottom: '1px solid #f0ece4',
+                          background: i % 2 === 0 ? '#fff' : '#fdfaf6',
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: '10px 13px',
+                            fontSize: 12,
+                            color: '#888',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {entry.ts.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                          <br />
+                          <span style={{ fontSize: 11 }}>
+                            {entry.ts.toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 13px' }}>
+                          <Badge type={entry.type} />
+                        </td>
+                        <td
+                          style={{
+                            padding: '10px 13px',
+                            fontWeight: 600,
+                            fontFamily: "'Playfair Display',serif",
+                          }}
+                        >
+                          {entry.itemName}
+                        </td>
+                        <td style={{ padding: '10px 13px', fontWeight: 700 }}>
+                          {entry.qty} {entry.unit}
+                        </td>
+                        <td
+                          style={{
+                            padding: '10px 13px',
+                            fontSize: 13,
+                            color: '#555',
+                          }}
+                        >
+                          {entry.scout || '—'}
+                        </td>
+                        <td
+                          style={{
+                            padding: '10px 13px',
+                            fontSize: 13,
+                            color: '#555',
+                          }}
+                        >
+                          {entry.event || '—'}
+                        </td>
+                        <td
+                          style={{
+                            padding: '10px 13px',
+                            fontSize: 12,
+                            color: '#888',
+                            maxWidth: 160,
+                          }}
+                        >
+                          {entry.notes || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* MODALS */}
+      {modal?.type === 'move' && (
+        <MovementModal
+          item={modal.item}
+          type={modal.moveType}
+          groups={groups}
+          onClose={() => setModal(null)}
+          onConfirm={(d) => handleMove(modal.item, modal.moveType, d)}
+        />
+      )}
+      {modal?.type === 'writeoff' && (
+        <WriteOffModal
+          item={modal.item}
+          onClose={() => setModal(null)}
+          onConfirm={(d) => handleWriteOff(modal.item, d)}
+        />
+      )}
+      {modal?.type === 'addItem' && (
+        <AddItemModal onClose={() => setModal(null)} onAdd={handleAddItem} />
+      )}
+      {modal?.type === 'buyMore' && (
+        <BuyMoreModal
+          item={modal.item}
+          onClose={() => setModal(null)}
+          onConfirm={(d) => handleBuyMore(modal.item, d)}
+        />
+      )}
+      {modal?.type === 'removeItem' && (
+        <RemoveItemModal
+          item={modal.item}
+          onClose={() => setModal(null)}
+          onConfirm={(r) => handleRemoveItem(modal.item, r)}
+        />
+      )}
+      {modal?.type === 'scan' && (
+        <ImageAnalysisModal
+          onClose={() => setModal(null)}
+          onResult={handleScanResult}
+        />
+      )}
+      {modal?.type === 'newGroup' && (
+        <GroupModal
+          onClose={() => setModal(null)}
+          onSave={(data) => handleSaveGroup(data, null)}
+        />
+      )}
+      {modal?.type === 'editGroup' && (
+        <GroupModal
+          group={modal.group}
+          onClose={() => setModal(null)}
+          onSave={(data) => handleSaveGroup(data, modal.group.id)}
+        />
+      )}
+      {modal?.type === 'groupDetail' && (
+        <GroupDetailModal
+          group={modal.group}
+          onClose={() => setModal(null)}
+          onEdit={() => setModal({ type: 'editGroup', group: modal.group })}
+        />
+      )}
+    </div>
+  );
+}
