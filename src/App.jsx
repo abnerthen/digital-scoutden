@@ -1961,7 +1961,7 @@ export default function App() {
           event: 'Added from image scan',
         });
       }
-    });
+    }
   };
 
   // ── Group handlers ──
