@@ -1743,6 +1743,7 @@ export default function App() {
   )
 
   const addLog = async (entry) => {
+    console.log('addLog called with:', entry)
     const logEntry = {
       type: entry.type,
       item_id: entry.itemId || null,
@@ -1755,6 +1756,7 @@ export default function App() {
       event: entry.event || null,
       notes: entry.notes || null,
     }
+    console.log('writing to supabase:', logEntry) 
     await writeLog(logEntry);
     setLog((prev) => [{ ...logEntry, id: Date.now(), ts: new Date() }, ...prev]);
   }
@@ -1827,7 +1829,7 @@ export default function App() {
     setModal(null)
   }
 
-  const handleWriteOff = (item, { qty, reason }) => {
+  const handleWriteOff = async (item, { qty, reason }) => {
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
@@ -1835,7 +1837,7 @@ export default function App() {
           : i
       )
     );
-    addLog({
+    await addLog({
       type: 'WRITEOFF',
       itemName: item.name,
       qty,
@@ -1847,7 +1849,7 @@ export default function App() {
     setModal(null);
   };
 
-  const handleAddItem = (data) => {
+  const handleAddItem = async (data) => {
     const newItem = {
       ...data,
       totalOwned: data.quantity,
@@ -1856,7 +1858,7 @@ export default function App() {
       removed: false,
     };
     setItems((prev) => [...prev, newItem]);
-    addLog({
+    await addLog({
       type: 'ADD',
       itemName: data.name,
       qty: data.quantity,
@@ -1867,7 +1869,7 @@ export default function App() {
     });
   };
 
-  const handleBuyMore = (item, { qty, receiveNow, notes }) => {
+  const handleBuyMore = async (item, { qty, receiveNow, notes }) => {
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
@@ -1879,7 +1881,7 @@ export default function App() {
           : i
       )
     );
-    addLog({
+    await addLog({
       type: 'ADD',
       itemName: item.name,
       qty,
@@ -1893,13 +1895,13 @@ export default function App() {
     setModal(null);
   };
 
-  const handleRemoveItem = (item, reason) => {
+  const handleRemoveItem = async (item, reason) => {
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id ? { ...i, removed: true, removedReason: reason } : i
       )
     );
-    addLog({
+    await addLog({
       type: 'DELETE',
       itemName: item.name,
       qty: item.quantity,
@@ -1911,8 +1913,8 @@ export default function App() {
     setModal(null);
   };
 
-  const handleScanResult = (scannedItems, imagePreview) => {
-    scannedItems.forEach((si) => {
+  const handleScanResult = async (scannedItems, imagePreview) => {
+    for (const si of scannedItems) {
       const existing = items.find(
         (i) => i.name.toLowerCase() === si.name.toLowerCase()
       );
@@ -1928,7 +1930,7 @@ export default function App() {
               : i
           )
         );
-        addLog({
+        await addLog({
           type: 'IN',
           itemName: si.name,
           qty: si.estimatedQuantity,
@@ -1949,7 +1951,7 @@ export default function App() {
           removed: false,
         };
         setItems((prev) => [...prev, newItem]);
-        addLog({
+        await addLog({
           type: 'ADD',
           itemName: si.name,
           qty: si.estimatedQuantity,
