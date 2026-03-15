@@ -3,20 +3,28 @@ import { supabase } from './supabase'
 export async function getItems() {
   const { data, error } = await supabase
     .from('items')
-    .select('*')
-    .order('category')
+    .select('*, categories(name)')
+    .order('category_id')
   if (error) throw error
-  return data
+  return data.map(item => ({
+    ...item,
+    total_owned: item.total_owned,
+    category: item.categories?.name || 'Uncategorized',
+  }))
 }
 
 export async function addItem(item) {
   const { data, error } = await supabase
     .from('items')
     .insert(item)
-    .select()
+    .select('*, categories(name)')
     .single()
   if (error) throw error
-  return data
+  return {
+    ...data,
+    total_owned: data.total_owned,
+    category: data.categories?.name || 'Other',
+  }
 }
 
 export async function updateItemQuantity(id, quantity, totalOwned) {

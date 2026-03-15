@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getItems, addItem, updateItemQuantity, archiveItem } from './lib/items';
+import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
 import { signOut } from './lib/auth';
 import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
-import { getMembers, addMember, deactivateMember, updateMember } from './lib/members'
+import { getMembers, addMember, deactivateMember, updateMember } from './lib/members';
+import { getCategories, addCategory, deleteCategory } from './lib/categories';
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -493,7 +494,7 @@ function WriteOffModal({ item, onClose, onConfirm }) {
 // ─── Add Item Modal (new purchase) ────────────────────────────────────────────
 function AddItemModal({ onClose, onAdd }) {
   const [name, setName] = useState('');
-  const [cat, setCat] = useState('Other');
+  const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState('1');
   const [unit, setUnit] = useState('units');
@@ -561,12 +562,10 @@ function AddItemModal({ onClose, onAdd }) {
       <label style={labelStyle}>Category</label>
       <select
         value={cat}
-        onChange={(e) => setCat(e.target.value)}
+        onChange={(e) => setCategoryId(e.target.value)}
         style={inputStyle}
       >
-        {CATEGORIES.map((c) => (
-          <option key={c}>{c}</option>
-        ))}
+        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
       </select>
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ flex: 1 }}>
@@ -626,7 +625,7 @@ function AddItemModal({ onClose, onAdd }) {
           disabled={!name.trim()}
           onClick={() => {
             if (name.trim()) {
-              onAdd({ name, category: cat, quantity: qty, unit, notes });
+              onAdd({ name, categoryId, quantity: qty, unit, notes });
               onClose();
             }
           }}
@@ -1528,30 +1527,34 @@ export default function App() {
   const [groups, setGroups] = useState([]);
   const [log, setLog] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [members, setMembers] = useState([])
+  const [categories, setCategories] = useState([])  // add here
   const [modal, setModal] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory');
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('All');
   const [showRemoved, setShowRemoved] = useState(false);
-  const nextId = useRef(200);
   const [loading, setLoading] = useState([]);
-  const [members, setMembers] = useState([])
+  const [newCategory, setNewCategory] = useState("")
+  const nextId = useRef(200);
 
   useEffect(() => {
     async function load() {
-      const [itemsData, groupsData, logData, txData, membersData] = await Promise.all([
+      const [itemsData, groupsData, logData, txData, membersData, categoriesData] = await Promise.all([
         getItems(),
         getGroups(),
         getLog(),
         getOpenTransactions(),
         getMembers(),
+        getCategories(),
       ])
       setItems(itemsData);
       setGroups(groupsData);
       setLog(logData);
       setTransactions(txData);
       setLoading(false);
-      setMembers(membersData)
+      setMembers(membersData);
+      setCategories(categoriesData);
     }
     load();
   }, [])
@@ -1673,7 +1676,7 @@ export default function App() {
   const handleAddItem = async (data) => {
     const newItem = await addItem({
       name: data.name,
-      category: data.category,
+      category_id: data.categoryId,
       quantity: data.quantity,
       total_owned: data.quantity,
       unit: data.unit,
@@ -1740,6 +1743,17 @@ export default function App() {
     });
     setModal(null);
   };
+
+  // -- Category handlers --
+  const handleAddCategory = async (name) => {
+    const newCat = await addCategory(name)
+    setCategories(prev => [...prev, newCat])
+  }
+
+  const handleRemoveCategory = async (id) => {
+    await deleteCategory(id)
+    setCategories(prev => prev.filter(c => c.id !== id))
+  }
 
   // ── Group handlers ──
   const handleSaveGroup = async (data, editId) => {
@@ -1952,7 +1966,7 @@ export default function App() {
           borderBottom: '1px solid #e0e0e0',
         }}
       >
-        {['inventory', 'groups', 'members', 'log'].map((tab) => (
+        {['inventory', 'groups', 'members', 'log', 'categories'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -2031,9 +2045,7 @@ export default function App() {
                 style={{ ...inputStyle, width: 'auto', flex: 'none' }}
               >
                 <option value="All">All Categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
               <button
                 onClick={() => setShowRemoved((v) => !v)}
@@ -2782,6 +2794,88 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* -- CATEGORIES TAB -- */}
+        {activeTab === "categories" && (
+          <>
+            <h3 style={{
+              fontFamily: "'Playfair Display', serif",
+              marginBottom: 16 
+            }}>Categories</h3>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <input 
+                placeholder="New category name"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddCategory(newCategory.trim())}
+                style={{ ...inputStyle, flex: 1 }} />
+                <button 
+                  onClick={async () => {
+                    if (newCategory.trim()) {
+                      await handleAddCategory(newCategory.trim());
+                      setNewCategory('');
+                    }
+                  }}
+                  style={{
+                    padding: "9px 16px",
+                    background: ACCENT,
+                    color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer" 
+                  }}>
+                  + Add
+                </button>
+            </div>
+
+            {categories.map((cat, i) => (
+              <div key={cat.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: i < categories.length - 1 ? "1px solid #f0ece4" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                  {cat.protected && (
+                    <span style={{ fontSize: 11, background: "#f5f0e8", color: "#888", borderRadius: 6, padding: "2px 8px" }}>protected</span>
+                  )}
+                </div>
+                {!cat.protected && (
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    style={{ padding: "5px 12px", background: "#fce4ec", color: "#c62828", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+            
+            <div style={{ 
+              background: "#fff", 
+              borderRadius: 14, 
+              border: "1px solid #e8e0d4", 
+              overflow: "hidden" }}>
+              {categories.map((cat, i) => (
+                <div key={cat.id} style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "space-between", 
+                  padding: "12px 18px", 
+                  borderBottom: i < categories.length - 1 ? "1px solid #f0ece4" : "none" }}>
+                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    style={{ 
+                      padding: "5px 12px", 
+                      background: "#fce4ec", 
+                      color: "#c62828", 
+                      border: "none", 
+                      borderRadius: 7, 
+                      fontWeight: 600, 
+                      cursor: "pointer", 
+                      fontSize: 12 }}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
+          </>
+        )
+      }
       </main>
 
       {/* MODALS */}
