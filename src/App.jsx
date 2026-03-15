@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getItems } from './lib/items';
-import { getGroups } from './lib/groups';
-import { getLog } from './lib/log';
+import { getItems, addItem, updateItemQuantity, archiveItem } from './lib/items';
+import { getGroups, saveGroup } from './lib/groups';
+import { getLog, writeLog } from './lib/log';
 import { signOut } from './lib/auth';
-import { getOpenTransactions } from './lib/transactions';
+import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
+import { getMembers, addMember, deactivateMember, updateMember } from './lib/members'
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -23,6 +24,16 @@ const CATEGORIES = [
   'Models',
   'Other',
 ];
+
+const ROLES = [
+  { value: "scout", label: "Scout" },
+  { value: "troop_leader", label: "Troop Leader" },
+  { value: "assistant_leader", label: "Assistant Troop Leader" },
+  { value: "quartermaster", label: "Quartermaster" },
+  { value: "assistant_qm", label: "Assistant Quartermaster" },
+  { value: "committee_member", label: "Committee Member" },
+  { value: "scouter", label: "Scouter" },
+]
 
 const initialItems = [
   {
@@ -77,16 +88,22 @@ const initialItems = [
   },
 ];
 
+const modalTitleStyle = { 
+  margin: 0, 
+  fontFamily: "'Playfair Display',serif", 
+  fontSize: 20,
+  color: "#1b5e20"};
+
 // ─── Shared styles ─────────────────────────────────────────────────────────────
 const labelStyle = {
-  display: 'block',
-  fontSize: 12,
+  display: "block",
+  fontSize: 11,
   fontWeight: 700,
-  color: '#555',
-  marginBottom: 4,
-  marginTop: 12,
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
+  color: "#1a1a1a",
+  marginBottom: 6,
+  marginTop: 14,
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
 };
 const inputStyle = {
   width: '100%',
@@ -97,7 +114,8 @@ const inputStyle = {
   fontSize: 14,
   fontFamily: 'inherit',
   outline: 'none',
-  background: '#fafafa',
+  background: '#fff',
+  color: '#1a1a1a'
 };
 const btnBase = {
   border: 'none',
@@ -139,286 +157,214 @@ function Badge({ type }) {
 // ─── Overlay wrapper ───────────────────────────────────────────────────────────
 function Overlay({ children, wide }) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.52)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 16,
-          width: wide ? 680 : 440,
-          maxWidth: '100%',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          padding: 28,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
-        }}
-      >
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{
+        background: "#fff",
+        borderRadius: 20,
+        width: wide ? 680 : 460,
+        maxWidth: "100%",
+        maxHeight: "90vh",
+        overflowY: "auto",
+        padding: "32px 36px",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.18)",
+        border: "1px solid #e8e0d4",
+        color: "#000",
+      }}>
         {children}
       </div>
     </div>
   );
 }
 
-// ─── Check-out / Check-in Modal ────────────────────────────────────────────────
-function MovementModal({ item, type, groups, onClose, onConfirm }) {
-  const maxIn = item.totalOwned - item.quantity;
+// ─── Check-out Modal ──────────────────────────────────────────────────────────
+function CheckOutModal({ item, groups, onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
-  const [qtyDisplay, setQtyDisplay] = useState('1');
-  const [groupId, setGroupId] = useState('');
-  const [freeScout, setFreeScout] = useState('');
-  const [event, setEvent] = useState('');
-  const [notes, setNotes] = useState('');
-  const max = type === 'OUT' ? item.quantity : maxIn;
-  const selectedGroup = groups.find((g) => g.id === groupId);
+  const [qtyDisplay, setQtyDisplay] = useState("1");
+  const [groupId, setGroupId] = useState("");
+  const [requester, setRequester] = useState("");
+  const [checker, setChecker] = useState("");
+  const [event, setEvent] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const max = item.quantity;
+  const selectedGroup = groups.find(g => g.id === groupId);
 
   return (
-    <Overlay>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: "'Playfair Display',serif",
-            fontSize: 20,
-          }}
-        >
-          {type === 'IN' ? '▲ Check In' : '▼ Check Out'}: {item.name}
-        </h2>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: 22,
-            cursor: 'pointer',
-            color: '#888',
-          }}
-        >
-          ✕
-        </button>
-      </div>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <div
-          style={{
-            flex: 1,
-            background: '#f5f0e8',
-            borderRadius: 8,
-            padding: '8px 12px',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              color: '#888',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
-          >
-            In Store
-          </div>
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              fontFamily: "'Playfair Display',serif",
-              color: ACCENT,
-            }}
-          >
-            {item.quantity}
-          </div>
-        </div>
-        <div
-          style={{
-            flex: 1,
-            background: '#f5f0e8',
-            borderRadius: 8,
-            padding: '8px 12px',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              color: '#888',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
-          >
-            Total Owned
-          </div>
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              fontFamily: "'Playfair Display',serif",
-            }}
-          >
-            {item.totalOwned}
-          </div>
-        </div>
-        {type === 'IN' && (
-          <div
-            style={{
-              flex: 1,
-              background: '#e8f5e9',
-              borderRadius: 8,
-              padding: '8px 12px',
-              textAlign: 'center',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                color: '#888',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
-              Can Return
-            </div>
-            <div
-              style={{
-                fontSize: 20,
-                fontWeight: 700,
-                fontFamily: "'Playfair Display',serif",
-                color: ACCENT,
-              }}
-            >
-              {maxIn}
-            </div>
-          </div>
-        )}
+    <Overlay wide>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={modalTitleStyle}>▼ Check Out: {item.name}</h2>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
       </div>
 
-      <label style={labelStyle}>
-        Quantity {type === 'IN' ? `(max ${maxIn})` : `(max ${item.quantity})`}
-      </label>
-      <input
-        type="number"
-        min={1}
-        max={max}
-        value={qtyDisplay}
-        onChange={(e) => {
-          setQtyDisplay(e.target.value);
-          const num = parseInt(e.target.value);
-          if (!isNaN(num)) setQty(num);
-        }}
-        onBlur={() => setQtyDisplay(String(qty))}
-        style={inputStyle}
-      />
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>In Store</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: ACCENT }}>{item.quantity}</div>
+        </div>
+        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Owned</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif" }}>{item.total_owned}</div>
+        </div>
+      </div>
 
-      <label style={labelStyle}>Assign to Group</label>
-      <select
-        value={groupId}
-        onChange={(e) => setGroupId(e.target.value)}
-        style={inputStyle}
-      >
+      <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#7a5800" }}>
+        Both <strong>Requester</strong> and <strong>Checker</strong> must be filled for every checkout.
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Requested By *</label>
+          <input placeholder="Scout applying to take out" value={requester} onChange={e => setRequester(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Checked By (QM on duty) *</label>
+          <input placeholder="Quartermaster processing this" value={checker} onChange={e => setChecker(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Quantity (max {max})</label>
+          <input type="number" min={1} max={max} value={qtyDisplay}
+            onChange={e => { setQtyDisplay(e.target.value); const n = parseInt(e.target.value); if (!isNaN(n)) setQty(Math.max(1, Math.min(max, n))); }}
+            onBlur={() => setQtyDisplay(String(qty))}
+            style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Event / Activity</label>
+          <input placeholder="e.g. Camp Nusantara" value={event} onChange={e => setEvent(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+
+      <label style={labelStyle}>Assign to Group (optional)</label>
+      <select value={groupId} onChange={e => setGroupId(e.target.value)} style={inputStyle}>
         <option value="">— No group / individual —</option>
-        {groups.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.name} ({g.type === 'led' ? 'Led' : 'Collective'},{' '}
-            {g.members.length} members)
-          </option>
+        {groups.map(g => (
+          <option key={g.id} value={g.id}>{g.name} ({g.type === "led" ? "Led" : "Collective"}, {g.members.length} members)</option>
         ))}
       </select>
-
       {selectedGroup && (
-        <div
-          style={{
-            background: '#f0f7f0',
-            border: '1px solid #c8e6c9',
-            borderRadius: 8,
-            padding: '10px 14px',
-            marginTop: 10,
-            fontSize: 13,
-          }}
-        >
+        <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "10px 14px", marginTop: 8, fontSize: 13 }}>
           <strong style={{ color: ACCENT }}>
-            {selectedGroup.type === 'led'
-              ? `Leader: ${
-                  selectedGroup.members.find((m) => m.isLeader)?.name || '—'
-                }`
-              : `Collective responsibility (${selectedGroup.members.length} members)`}
+            {selectedGroup.type === "led"
+              ? `Leader: ${selectedGroup.members.find(m => m.isLeader)?.name || "—"}`
+              : `Collective (${selectedGroup.members.length} members)`}
           </strong>
-          <p style={{ margin: '4px 0 0', color: '#555' }}>
-            Members: {selectedGroup.members.map((m) => m.name).join(', ')}
-          </p>
+          <p style={{ margin: "3px 0 0", color: "#555" }}>{selectedGroup.members.map(m => m.name).join(", ")}</p>
         </div>
       )}
 
-      {!groupId && (
-        <>
-          <label style={labelStyle}>Scout / Individual Name</label>
-          <input
-            placeholder="e.g. Ahmad bin Razak"
-            value={freeScout}
-            onChange={(e) => setFreeScout(e.target.value)}
-            style={inputStyle}
-          />
-        </>
-      )}
+      <label style={labelStyle}>Remarks (condition on checkout)</label>
+      <textarea rows={2} placeholder="e.g. Minor tear on tent fly noted before checkout…" value={remarks} onChange={e => setRemarks(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
 
-      <label style={labelStyle}>Event / Activity</label>
-      <input
-        placeholder="e.g. Campfire Night 2025"
-        value={event}
-        onChange={(e) => setEvent(e.target.value)}
-        style={inputStyle}
-      />
-
-      <label style={labelStyle}>Notes</label>
-      <textarea
-        rows={2}
-        placeholder="Optional…"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        style={{ ...inputStyle, resize: 'vertical' }}
-      />
-
-      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+      <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+        <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
         <button
-          onClick={onClose}
-          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() =>
-            onConfirm({
-              qty,
-              groupId,
-              groupName: selectedGroup?.name || freeScout,
-              event,
-              notes,
-            })
-          }
-          style={{
-            ...btnBase,
-            flex: 2,
-            background: type === 'IN' ? ACCENT : ACCENT2,
-            color: '#fff',
-          }}
-        >
-          Confirm {type === 'IN' ? 'Check In' : 'Check Out'}
+          disabled={!requester.trim() || !checker.trim()}
+          onClick={() => onConfirm({ qty, groupId, groupName: selectedGroup?.name || requester, requester, checker, event, remarks })}
+          style={{ ...btnBase, flex: 2, background: requester.trim() && checker.trim() ? ACCENT2 : "#eee", color: requester.trim() && checker.trim() ? "#fff" : "#aaa", cursor: requester.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+          Confirm Check Out
         </button>
       </div>
+    </Overlay>
+  );
+}
+
+// ─── Check-in Modal ────────────────────────────────────────────────────────────
+function CheckInModal({ item, openTransactions, onClose, onConfirm }) {
+  const maxIn = item.totalOwned - item.quantity;
+  const [selectedTxId, setSelectedTxId] = useState(openTransactions[0]?.id || "");
+  const [returner, setReturner] = useState("");
+  const [checker, setChecker] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [condition, setCondition] = useState("Good");
+  const selectedTx = openTransactions.find(t => t.id === selectedTxId);
+
+  return (
+    <Overlay wide>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={modalTitleStyle}>▲ Check In: {item.name}</h2>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>In Store</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: ACCENT }}>{item.quantity}</div>
+        </div>
+        <div style={{ flex: 1, background: "#e8f5e9", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Outstanding</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: maxIn > 0 ? "#e65100" : DARK }}>{maxIn}</div>
+        </div>
+      </div>
+
+      {openTransactions.length === 0 ? (
+        <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "14px", fontSize: 14, color: "#7a5800" }}>
+          No open checkouts found for this item. All units are already in store.
+        </div>
+      ) : (
+        <>
+          <label style={labelStyle}>Select Checkout to Return *</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+            {openTransactions.map(tx => (
+              <div key={tx.id} onClick={() => setSelectedTxId(tx.id)}
+                style={{ border: `2px solid ${selectedTxId === tx.id ? ACCENT : "#ddd"}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", background: selectedTxId === tx.id ? "#f0f7f0" : "#fafafa" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <strong>{tx.requester_name}</strong>
+                    {tx.event && <span style={{ color: "#888", fontSize: 12 }}> · {tx.event}</span>}
+                  </div>
+                  <span style={{ fontWeight: 700, color: ACCENT2 }}>{tx.qty} {item.unit}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
+                  Out since {new Date(tx.checked_out_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} · QM: {tx.checkout_checker_name}
+                </div>
+                {tx.checkout_remarks && <div style={{ fontSize: 12, color: "#a0522d", marginTop: 2 }}>Checkout note: {tx.checkout_remarks}</div>}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13, color: "#7a5800" }}>
+            Both <strong>Returner</strong> and <strong>Checker</strong> must be filled for every return.
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Returned By *</label>
+              <input placeholder="Who is handing items back" value={returner} onChange={e => setReturner(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Checked By (QM on duty) *</label>
+              <input placeholder="Quartermaster receiving this" value={checker} onChange={e => setChecker(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+
+          <label style={labelStyle}>Condition on Return</label>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            {["Good", "Fair", "Damaged"].map(c => (
+              <div key={c} onClick={() => setCondition(c)}
+                style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                  background: condition === c ? (c === "Good" ? "#e8f5e9" : c === "Fair" ? "#fff8e1" : "#fce4ec") : "#f0f0f0",
+                  color: condition === c ? (c === "Good" ? ACCENT : c === "Fair" ? "#f57f17" : "#c62828") : "#aaa",
+                  border: `2px solid ${condition === c ? (c === "Good" ? "#a5d6a7" : c === "Fair" ? "#ffe082" : "#ef9a9a") : "transparent"}` }}>
+                {c === "Good" ? "✓ Good" : c === "Fair" ? "~ Fair" : "⚠ Damaged"}
+              </div>
+            ))}
+          </div>
+
+          <label style={labelStyle}>Remarks (damage details, notes)</label>
+          <textarea rows={2} placeholder="e.g. Zip broken on return, compass glass cracked…" value={remarks} onChange={e => setRemarks(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
+
+          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+            <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+            <button
+              disabled={!returner.trim() || !checker.trim() || !selectedTxId}
+              onClick={() => onConfirm({ txId: selectedTxId, qty: selectedTx?.qty || 1, groupId: selectedTx?.group_id, groupName: selectedTx?.group_id, returner, checker, condition, remarks })}
+              style={{ ...btnBase, flex: 2, background: returner.trim() && checker.trim() ? ACCENT : "#eee", color: returner.trim() && checker.trim() ? "#fff" : "#aaa", cursor: returner.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+              Confirm Return
+            </button>
+          </div>
+        </>
+      )}
     </Overlay>
   );
 }
@@ -563,11 +509,7 @@ function AddItemModal({ onClose, onAdd }) {
         }}
       >
         <h2
-          style={{
-            margin: 0,
-            fontFamily: "'Playfair Display',serif",
-            fontSize: 20,
-          }}
+          style={modalTitleStyle}
         >
           🛒 New Purchase
         </h2>
@@ -758,7 +700,7 @@ function BuyMoreModal({ item, onClose, onConfirm }) {
               fontFamily: "'Playfair Display',serif",
             }}
           >
-            {item.totalOwned} {item.unit}
+            {item.total_owned} {item.unit}
           </div>
         </div>
         <div
@@ -788,7 +730,7 @@ function BuyMoreModal({ item, onClose, onConfirm }) {
               color: ACCENT,
             }}
           >
-            {item.totalOwned + qty} {item.unit}
+            {item.total_owned + qty} {item.unit}
           </div>
         </div>
       </div>
@@ -1033,11 +975,7 @@ function ImageAnalysisModal({ onClose, onResult }) {
         }}
       >
         <h2
-          style={{
-            margin: 0,
-            fontFamily: "'Playfair Display',serif",
-            fontSize: 22,
-          }}
+          style={modalTitleStyle}
         >
           📸 Scan Equipment from Image
         </h2>
@@ -1193,18 +1131,16 @@ function GroupModal({ group, onClose, onSave }) {
   const [newMember, setNewMember] = useState('');
 
   const addMember = () => {
-    const trimmed = newMember.trim();
-    if (
-      !trimmed ||
-      members.find((m) => m.name.toLowerCase() === trimmed.toLowerCase())
-    )
-      return;
-    const isFirst = members.length === 0;
-    setMembers((prev) => [
-      ...prev,
-      { id: Date.now(), name: trimmed, isLeader: isFirst && type === 'led' },
-    ]);
-    setNewMember('');
+    const selected = availableMembers.find(m => m.id === newMember)
+    if (!selected || members.find(m => m.member_id === selected.id)) return
+    const isFirst = members.length === 0
+    setMembers(prev => [...prev, {
+      id: Date.now(),
+      member_id: selected.id,
+      name: selected.full_name,
+      isLeader: isFirst && type === "led"
+    }])
+    setNewMember("")
   };
 
   const removeMember = (id) => {
@@ -1229,11 +1165,7 @@ function GroupModal({ group, onClose, onSave }) {
         }}
       >
         <h2
-          style={{
-            margin: 0,
-            fontFamily: "'Playfair Display',serif",
-            fontSize: 20,
-          }}
+          style={modalTitleStyle}
         >
           {isEdit ? '✎ Edit Group' : '👥 New Group'}
         </h2>
@@ -1307,13 +1239,19 @@ function GroupModal({ group, onClose, onSave }) {
 
       <label style={{ ...labelStyle, marginTop: 18 }}>Members</label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <input
-          placeholder="Scout name…"
+        <select
           value={newMember}
-          onChange={(e) => setNewMember(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addMember()}
-          style={{ ...inputStyle, marginTop: 0 }}
-        />
+          onChange={e => setNewMember(e.target.value)}
+          style={inputStyle}>
+          <option value="">Select a member</option>
+          {availableMembers
+            .filter(m => !members.find(existing => existing.member_id === m.id))
+            .map(m => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}{m.role != 'Scout' ? ` (${m.role})` : ""}
+              </option>
+            ))}
+        </select>
         <button
           onClick={addMember}
           style={{
@@ -1707,6 +1645,86 @@ function GroupDetailModal({ group, onClose, onEdit }) {
   );
 }
 
+// -- Member Modal ───────────────────────────────────────────────────────────────
+function AddMemberModal({ onClose, onAdd, onEdit, member }) {
+  console.log('onEdit prop:', member)  // add this temporarily
+  const isEdit = !!member
+  const [fullName, setFullName] = useState(member?.fullName ||"")
+  const [email, setEmail] = useState(member?.email || "")
+  const [role, setRole] = useState(member?.role || "scout")
+  const handleSubmit = async () => {
+    if (!isEdit && !fullName.trim()) return
+    const data = {
+      full_name: fullName,
+      email: email || null,
+      role,
+      active: true,
+    }
+    try {
+      if (isEdit) {
+        await onEdit(member.id, { role })
+      } else {
+        await onAdd(data)
+      }
+      onClose()
+    } catch (error) {
+      console.error("Error saving member:", error)
+      alert(error.message)
+    }
+  }
+
+  return (
+    <Overlay>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={modalTitleStyle}>{isEdit ? "✎ Edit Member" : "👤 Add Member"}</h2>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
+      </div>
+
+      {isEdit ? (
+        <>
+          <div style={{ background: "#f5f0e8", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontFamily: "'Playfair Display', serif", fontSize: 16 }}>{member.full_name}</div>
+            <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>{member.email || "No email"}</div>
+          </div>
+          <label style={labelStyle}>Role</label>
+          <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
+            {ROLES.map(r => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+        </>
+      ) : (
+        <>
+        <label style={labelStyle}>Full Name *</label>
+        <input placeholder="e.g. Ahmad bin Razak" value={fullName} onChange={e => setFullName(e.target.value)} style={inputStyle} />
+
+        <label style={labelStyle}>Email</label>
+        <input type="email" placeholder="e.g. ahmad@scouts.my" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+
+        <label style={labelStyle}>Role</label>
+        <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
+          {ROLES.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+        </>
+      )}
+      <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+        <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+        <button
+          disabled={!isEdit && !fullName.trim()}
+          onClick={handleSubmit}
+          style={{ ...btnBase, flex: 2, 
+            background: (!isEdit &&fullName.trim()) ? "#eee" : ACCENT, 
+            color: !isEdit && !fullName.trim() ? "#aaa" : "#fff", 
+            cursor: !isEdit && !fullName.trim() ? "not-allowed" : "pointer"}}>
+          {isEdit ? "Save Changes" : "Add Member"}
+        </button>
+      </div>
+    </Overlay>
+  )
+}
+
 // ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [items, setItems] = useState([]);
@@ -1720,20 +1738,23 @@ export default function App() {
   const [showRemoved, setShowRemoved] = useState(false);
   const nextId = useRef(200);
   const [loading, setLoading] = useState([]);
+  const [members, setMembers] = useState([])
 
   useEffect(() => {
     async function load() {
-      const [itemsData, groupsData, logData, txData] = await Promise.all([
+      const [itemsData, groupsData, logData, txData, membersData] = await Promise.all([
         getItems(),
         getGroups(),
         getLog(),
         getOpenTransactions(),
+        getMembers(),
       ])
       setItems(itemsData);
       setGroups(groupsData);
       setLog(logData);
       setTransactions(txData);
       setLoading(false);
+      setMembers(membersData)
     }
     load();
   }, [])
@@ -1750,9 +1771,9 @@ export default function App() {
       item_name: entry.itemName,
       qty: entry.qty,
       unit: entry.unit,
-      requesterName: entry.requester || null,
-      returnerName: entry.returner || null,
-      checkerName: entry.checker || null,
+      requester_name: entry.requester || null,
+      returner_name: entry.returner || null,
+      checker_name: entry.checker || null,
       event: entry.event || null,
       notes: entry.notes || null,
     }
@@ -1774,7 +1795,7 @@ export default function App() {
       checked_out_at: new Date(),
     }
     await createCheckout(tx)
-    await updateItemQuantity(item.id, item.quantity - qty, item.totalOwned)
+    await updateItemQuantity(item.id, item.quantity - qty, item.total_owned)
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - qty } : i))
     if (groupId) {
       setGroups(prev => prev.map(g => g.id === groupId
@@ -1802,7 +1823,7 @@ export default function App() {
       condition,
       return_remarks: remarks || null,
     })
-    await updateItemQuantity(item.id, item.quantity + qty, item.totalOwned)
+    await updateItemQuantity(item.id, item.quantity + qty, item.total_owned)
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + qty } : i))
     setTransactions(prev => prev.filter(t => t.id !== txId))
     if (groupId) {
@@ -1830,10 +1851,13 @@ export default function App() {
   }
 
   const handleWriteOff = async (item, { qty, reason }) => {
+    const newQuantity = item.quantity - qty;
+    const newTotalOwned = item.total_owned - qty;
+    await updateItemQuantity(item.id, newQuantity, newTotalOwned);
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
-          ? { ...i, quantity: i.quantity - qty, totalOwned: i.totalOwned - qty }
+          ? { ...i, quantity: newQuantity, total_owned: newTotalOwned }
           : i
       )
     );
@@ -1850,19 +1874,22 @@ export default function App() {
   };
 
   const handleAddItem = async (data) => {
-    const newItem = {
-      ...data,
-      totalOwned: data.quantity,
-      id: nextId.current++,
-      image: null,
+    const newItem = await addItem({
+      name: data.name,
+      category: data.category,
+      quantity: data.quantity,
+      total_owned: data.quantity,
+      unit: data.unit,
+      notes: data.notes || null,
       removed: false,
-    };
+    })
     setItems((prev) => [...prev, newItem]);
     await addLog({
       type: 'ADD',
-      itemName: data.name,
-      qty: data.quantity,
-      unit: data.unit,
+      itemId: newItem.id,
+      itemName: newItem.name,
+      qty: newItem.quantity,
+      unit: newItem.unit,
       scout: 'Quartermaster',
       notes: data.notes || '',
       event: 'New purchase',
@@ -1870,32 +1897,29 @@ export default function App() {
   };
 
   const handleBuyMore = async (item, { qty, receiveNow, notes }) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id
-          ? {
-              ...i,
-              totalOwned: i.totalOwned + qty,
-              quantity: receiveNow ? i.quantity + qty : i.quantity,
-            }
-          : i
-      )
-    );
+    const newTotalOwned = item.total_owned + qty;
+    const newQuantity = receiveNow ? item.quantity + qty : item.quantity;
+
+    await updateItemQuantity(item.id, newQuantity, newTotalOwned);
+    setItems(prev => prev.map(i => i.id === item.id
+      ? { ...i, total_owned: newTotalOwned, quantity: newQuantity }
+      : i
+    ));
     await addLog({
       type: 'ADD',
+      itemId: item.id,
       itemName: item.name,
       qty,
       unit: item.unit,
-      scout: 'Quartermaster',
-      notes,
-      event: receiveNow
-        ? 'Purchased & received'
-        : 'Purchased (pending delivery)',
+      checker: 'Quartermaster',
+      notes: notes || null,
+      event: receiveNow ? 'Restock — received' : 'Restock — pending delivery',
     });
     setModal(null);
   };
 
   const handleRemoveItem = async (item, reason) => {
+    await archiveItem(item.id, reason);
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id ? { ...i, removed: true, removedReason: reason } : i
@@ -1925,7 +1949,7 @@ export default function App() {
               ? {
                   ...i,
                   quantity: i.quantity + si.estimatedQuantity,
-                  totalOwned: i.totalOwned + si.estimatedQuantity,
+                  total_owned: i.total_owned + si.estimatedQuantity,
                 }
               : i
           )
@@ -1945,7 +1969,7 @@ export default function App() {
           name: si.name,
           category: si.category,
           quantity: si.estimatedQuantity,
-          totalOwned: si.estimatedQuantity,
+          total_owned: si.estimatedQuantity,
           unit: si.unit,
           image: imagePreview,
           removed: false,
@@ -1965,18 +1989,37 @@ export default function App() {
   };
 
   // ── Group handlers ──
-  const handleSaveGroup = (data, editId) => {
+  const handleSaveGroup = async (data, editId) => {
+    const saved = await saveGroup({ ...data, id: editId || undefined })
     if (editId) {
-      setGroups((prev) =>
-        prev.map((g) => (g.id === editId ? { ...g, ...data } : g))
-      );
+      setGroups(prev => prev.map(g => g.id === editId ? saved : g))
     } else {
-      setGroups((prev) => [
-        ...prev,
-        { ...data, id: nextId.current++, checkouts: [] },
-      ]);
+      setGroups(prev => [...prev, { ...saved, checkouts: [] }])
     }
   };
+
+  // -- Member handlers --
+  const handleAddMember = async (data) => {
+    const newMember = await addMember(data)
+    setMembers(prev => [...prev, newMember])
+  }
+
+  const handleDeactivateMember = async (id) => {
+    await deactivateMember(id)
+    setMembers(prev => prev.filter(m => m.id !== id))
+  }
+
+  const handleEditMember = async (id, data) => {
+    console.log('handleEditMember called:', id, data)
+    try {
+      const updated = await updateMember(id, data)
+      console.log('updated:', updated)
+      setMembers(prev => prev.map(m => m.id === id ? updated : m))
+    } catch (err) {
+      console.error('handleEditMember error:', err)
+      alert(err.message)
+    }
+  }
 
   // ── Derived ──
   const activeItems = items.filter((i) => !i.removed);
@@ -2171,7 +2214,7 @@ export default function App() {
           borderBottom: '1px solid #e0e0e0',
         }}
       >
-        {['inventory', 'groups', 'log'].map((tab) => (
+        {['inventory', 'groups', 'members', 'log'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -2195,6 +2238,8 @@ export default function App() {
               ? '📦 Inventory'
               : tab === 'groups'
               ? '👥 Groups'
+              : tab === "members" 
+              ? "👤 Members"
               : '📋 Log'}
           </button>
         ))}
@@ -2464,13 +2509,13 @@ export default function App() {
                                 color: '#555',
                               }}
                             >
-                              {item.totalOwned}
+                              {item.total_owned}
                             </span>
                             <span style={{ fontSize: 12, color: '#888' }}>
                               owned
                             </span>
                           </div>
-                          {item.quantity < item.totalOwned && (
+                          {item.quantity < item.total_owned && (
                             <div
                               style={{
                                 fontSize: 11,
@@ -2478,7 +2523,7 @@ export default function App() {
                                 marginTop: 2,
                               }}
                             >
-                              {item.totalOwned - item.quantity} {item.unit}{' '}
+                              {item.total_owned - item.quantity} {item.unit}{' '}
                               currently out
                             </div>
                           )}
@@ -2509,9 +2554,9 @@ export default function App() {
                             onClick={() =>
                               setModal({ type: 'checkin', item })
                             }
-                            disabled={item.quantity >= item.totalOwned}
+                            disabled={item.quantity >= item.total_owned}
                             title={
-                              item.quantity >= item.totalOwned
+                              item.quantity >= item.total_owned
                                 ? 'All owned units are already in store'
                                 : 'Check units back in'
                             }
@@ -2519,18 +2564,18 @@ export default function App() {
                               flex: 1,
                               padding: '7px 0',
                               background:
-                                item.quantity >= item.totalOwned
+                                item.quantity >= item.total_owned
                                   ? '#eee'
                                   : '#e8f5e9',
                               color:
-                                item.quantity >= item.totalOwned
+                                item.quantity >= item.total_owned
                                   ? '#ccc'
                                   : '#2e7d32',
                               border: 'none',
                               borderRadius: 7,
                               fontWeight: 700,
                               cursor:
-                                item.quantity >= item.totalOwned
+                                item.quantity >= item.total_owned
                                   ? 'not-allowed'
                                   : 'pointer',
                               fontSize: 12,
@@ -2798,6 +2843,72 @@ export default function App() {
           </>
         )}
 
+        {/* -- MEMBERS TAB -- */}
+        {activeTab === "members" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <p style={{ margin: 0, color: "#777", fontSize: 14 }}>Manage troop members and their roles.</p>
+              <button onClick={() => setModal({ type: "addMember" })}
+                style={{ padding: "8px 16px", background: ACCENT, color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                👤 Add Member
+              </button>
+            </div>
+
+            {members.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>👤</div>
+                <p style={{ fontStyle: "italic", fontSize: 15 }}>No members yet. Add scouts and committee members.</p>
+              </div>
+            ) : (
+              <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e8e0d4", overflow: "hidden" }}>
+                {members.map((member, i) => (
+                  <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: i < members.length - 1 ? "1px solid #f0ece4" : "none" }}>
+                    <div style={{ width: 40, height: 40, 
+                      borderRadius: "50%", 
+                      background: 
+                        ["troop_leader", "assistant_leader", "scouter", "quartermaster"].includes(member.role) 
+                          ? ACCENT 
+                          : member.role === "assistant_qm" ? ACCENT2 
+                          : "#e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                      {["troop_leader", "assistant_leader", "scouter"].includes(member.role) ? "⚜️" : ["quartermaster", "assistant_qm"].includes(member.role) ? "🔑" : "🧑"}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontFamily: "'Playfair Display', serif", fontSize: 15 }}>{member.full_name}</div>
+                      <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                        {member.email || "No email"}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 11,
+                      background: ["quartermaster", "troop_leader", "scouter"].includes(member.role) ? "#e8f5e9"
+                        : ["assistant_qm", "assistant_leader"].includes(member.role) ? "#fff3e0"
+                        : "#f5f0e8",
+                      color: ["quartermaster", "troop_leader", "scouter"].includes(member.role) ? ACCENT
+                        : ["assistant_qm", "assistant_leader"].includes(member.role) ? "#e65100"
+                        : "#888",
+                      borderRadius: 6,
+                      padding: "3px 10px",
+                      fontWeight: 700
+                    }}>
+                      {ROLES.find(r => r.value === member.role)?.label || member.role}
+                    </span>
+                  <button
+                    onClick={() => setModal({ type: "editMember", member })}
+                    style={{ padding: "6px 12px", background: "#e3f2fd", color: "#1565c0", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer", fontSize: 12, marginRight: 6 }}>
+                    ✎ Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeactivateMember(member.id)}
+                    style={{ padding: "6px 12px", background: "#fce4ec", color: "#c62828", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                    Remove
+                  </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
         {/* ── LOG TAB ── */}
         {activeTab === 'log' && (
           <div
@@ -2977,8 +3088,21 @@ export default function App() {
           onResult={handleScanResult}
         />
       )}
+      {modal?.type === 'addMember' && (
+        <AddMemberModal
+          onClose={() => setModal(null)}
+          onAdd={handleAddMember}
+        />
+      )}
+      {modal?.type === 'editMember' && (
+        <AddMemberModal
+          member={modal.member}
+          onClose={() => setModal(null)}
+          onEdit={handleEditMember} />
+      )}
       {modal?.type === 'newGroup' && (
         <GroupModal
+          availableMembers={members}
           onClose={() => setModal(null)}
           onSave={(data) => handleSaveGroup(data, null)}
         />
@@ -2986,6 +3110,7 @@ export default function App() {
       {modal?.type === 'editGroup' && (
         <GroupModal
           group={modal.group}
+          availableMembers={members}
           onClose={() => setModal(null)}
           onSave={(data) => handleSaveGroup(data, modal.group.id)}
         />
