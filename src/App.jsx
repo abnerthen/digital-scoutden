@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getItems } from './lib/items';
 import { getGroups } from './lib/groups';
 import { getLog } from './lib/log';
+import { signOut } from './lib/auth';
 import { getOpenTransactions } from './lib/transactions';
 
 
@@ -2079,6 +2080,11 @@ export default function App() {
             }}
           >
             👥 Group
+          </button>
+          <button
+            onClick={() => signOut()}
+            style={{ padding: '8px 14px', background: '#37474f', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+            Sign Out
           </button>
         </div>
       </header>
