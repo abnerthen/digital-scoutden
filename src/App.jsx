@@ -2083,8 +2083,8 @@ export default function App() {
           </button>
           <button
             onClick={() => signOut()}
-            style={{ padding: '8px 14px', background: '#37474f', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-            Sign Out
+            style={{ padding: '8px 14px', background: '#ff0000', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+            SIGN OUT
           </button>
         </div>
       </header>
