@@ -1742,74 +1742,90 @@ export default function App() {
     <div style={{ padding: 40, fontFamily: 'serif' }}>Loading storeroom...</div>
   )
 
-  const addLog = (entry) =>
-    setLog((prev) => [{ ...entry, id: Date.now(), ts: new Date() }, ...prev]);
+  const addLog = async (entry) => {
+    const logEntry = {
+      type: entry.type,
+      item_id: entry.itemId || null,
+      item_name: entry.itemName,
+      qty: entry.qty,
+      unit: entry.unit,
+      requesterName: entry.requester || null,
+      returnerName: entry.returner || null,
+      checkerName: entry.checker || null,
+      event: entry.event || null,
+      notes: entry.notes || null,
+    }
+    await writeLog(logEntry);
+    setLog((prev) => [{ ...logEntry, id: Date.now(), ts: new Date() }, ...prev]);
+  }
 
   // ── Item handlers ──
-  const handleMove = (
-    item,
-    type,
-    { qty, groupId, groupName, event, notes }
-  ) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id
-          ? {
-              ...i,
-              quantity: type === 'IN' ? i.quantity + qty : i.quantity - qty,
-            }
-          : i
-      )
-    );
-
-    if (type === 'OUT' && groupId) {
-      setGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                checkouts: [
-                  ...(g.checkouts || []),
-                  {
-                    itemId: item.id,
-                    itemName: item.name,
-                    unit: item.unit,
-                    qty,
-                    date: Date.now(),
-                    event,
-                  },
-                ],
-              }
-            : g
-        )
-      );
+  const handleCheckOut = async (item, { qty, groupId, groupName, requester, checker, event, remarks }) => {
+    const tx = {
+      item_id: item.id,
+      group_id: groupId || null,
+      qty,
+      requester_name: requester,
+      checkout_checker_name: checker,
+      event: event || null,
+      checkout_remarks: remarks || null,
+      checked_out_at: new Date(),
     }
-    if (type === 'IN' && groupId) {
-      setGroups((prev) =>
-        prev.map((g) => {
-          if (g.id !== groupId) return g;
-          const idx = (g.checkouts || []).findIndex(
-            (c) => c.itemId === item.id
-          );
-          if (idx === -1) return g;
-          const updated = [...g.checkouts];
-          updated.splice(idx, 1);
-          return { ...g, checkouts: updated };
-        })
-      );
+    await createCheckout(tx)
+    await updateItemQuantity(item.id, item.quantity - qty, item.totalOwned)
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - qty } : i))
+    if (groupId) {
+      setGroups(prev => prev.map(g => g.id === groupId
+        ? { ...g, checkouts: [...(g.checkouts || []), { itemId: item.id, itemName: item.name, unit: item.unit, qty, date: Date.now(), event }] }
+        : g))
     }
-
-    addLog({
-      type,
+    await addLog({
+      type: 'OUT',
+      itemId: item.id,
       itemName: item.name,
       qty,
       unit: item.unit,
-      scout: groupName || '—',
-      notes,
-      event,
-    });
-    setModal(null);
-  };
+      requester: requester || null,
+      checker: checker || null,
+      event: event || null,
+      notes: remarks || null,
+    })
+    setModal(null)
+  }
+
+  const handleCheckIn = async (item, { txId, qty, groupId, groupName, returner, checker, condition, remarks }) => {
+    await closeTransaction(txId, {
+      returner_name: returner,
+      return_checker_name: checker,
+      condition,
+      return_remarks: remarks || null,
+    })
+    await updateItemQuantity(item.id, item.quantity + qty, item.totalOwned)
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + qty } : i))
+    setTransactions(prev => prev.filter(t => t.id !== txId))
+    if (groupId) {
+      setGroups(prev => prev.map(g => {
+        if (g.id !== groupId) return g
+        const idx = (g.checkouts || []).findIndex(c => c.itemId === item.id)
+        if (idx === -1) return g
+        const updated = [...g.checkouts]
+        updated.splice(idx, 1)
+        return { ...g, checkouts: updated }
+      }))
+    }
+    await addLog({
+      type: 'IN',
+      itemId: item.id,
+      itemName: item.name,
+      qty,
+      unit: item.unit,
+      returner: returner || null,
+      checker: checker || null,
+      event: null,
+      notes: `${condition}${remarks ? ' — ' + remarks : ''}`,
+    })
+    setModal(null)
+  }
 
   const handleWriteOff = (item, { qty, reason }) => {
     setItems((prev) =>
@@ -2468,7 +2484,7 @@ export default function App() {
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             onClick={() =>
-                              setModal({ type: 'move', item, moveType: 'OUT' })
+                              setModal({ type: 'checkout', item })
                             }
                             disabled={item.quantity === 0}
                             style={{
@@ -2489,7 +2505,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() =>
-                              setModal({ type: 'move', item, moveType: 'IN' })
+                              setModal({ type: 'checkin', item })
                             }
                             disabled={item.quantity >= item.totalOwned}
                             title={
@@ -2918,14 +2934,16 @@ export default function App() {
       </main>
 
       {/* MODALS */}
-      {modal?.type === 'move' && (
-        <MovementModal
-          item={modal.item}
-          type={modal.moveType}
-          groups={groups}
+      {modal?.type === "checkout" && (
+        <CheckOutModal item={modal.item} groups={groups}
           onClose={() => setModal(null)}
-          onConfirm={(d) => handleMove(modal.item, modal.moveType, d)}
-        />
+          onConfirm={d => handleCheckOut(modal.item, d)} />
+      )}
+      {modal?.type === "checkin" && (
+        <CheckInModal item={modal.item}
+          openTransactions={transactions.filter(t => t.itemId === modal.item.id)}
+          onClose={() => setModal(null)}
+          onConfirm={d => handleCheckIn(modal.item, d)} />
       )}
       {modal?.type === 'writeoff' && (
         <WriteOffModal
