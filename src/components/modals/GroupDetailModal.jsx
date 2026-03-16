@@ -1,8 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, ROLES, labelStyle, inputStyle, btnBase, modalTitleStyle } from '../../constants';
-import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from '../../lib/items';
-import { getGroups, saveGroup } from '../../lib/groups';
-
+import React, { useState } from 'react';
+import { DARK, ACCENT, btnBase, modalTitleStyle } from '../../constants';
 import Overlay from '../Overlay';
 
 // ─── Group Detail Modal ────────────────────────────────────────────────────────
@@ -23,12 +20,7 @@ export default function GroupDetailModal({ group, onClose, onEdit }) {
       >
         <div>
           <h2
-            style={{
-              margin: 0,
-              fontFamily: "'Playfair Display',serif",
-              fontSize: 22,
-              color: ACCENT,
-            }}
+            style={modalTitleStyle}
           >
             {group.name}
           </h2>
@@ -40,13 +32,9 @@ export default function GroupDetailModal({ group, onClose, onEdit }) {
           <button
             onClick={onEdit}
             style={{
-              padding: '7px 14px',
+              ...btnBase,
+              padding: '10px 16px',
               background: ACCENT,
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: 13,
             }}
           >
             ✎ Edit
@@ -169,14 +157,15 @@ export default function GroupDetailModal({ group, onClose, onEdit }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
+                background: m.is_leader ? '#03890f' : '#fff',
                 padding: '10px 14px',
                 borderBottom:
                   i < members.length - 1 ? '1px solid #f0ece4' : 'none',
               }}
             >
-              <span>{group.type === 'led' && m.isLeader ? '👑' : '🧑'}</span>
+              <span>{group.type === 'led' && m.is_leader ? '👑' : '🧑'}</span>
               <span style={{ flex: 1 }}>{m.name}</span>
-              {group.type === 'led' && m.isLeader && (
+              {group.type === 'led' && m.is_leaders && (
                 <span
                   style={{
                     fontSize: 11,

@@ -92,7 +92,7 @@ function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
         <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "10px 14px", marginTop: 8, fontSize: 13 }}>
           <strong style={{ color: ACCENT }}>
             {selectedGroup.type === "led"
-              ? `Leader: ${selectedGroup.members.find(m => m.isLeader)?.name || "—"}`
+              ? `Leader: ${selectedGroup.members.find(m => m.is_leader)?.name || "—"}`
               : `Collective (${selectedGroup.members.length} members)`}
           </strong>
           <p style={{ margin: "3px 0 0", color: "#555" }}>{selectedGroup.members.map(m => m.name).join(", ")}</p>
@@ -267,7 +267,7 @@ function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
             <MemberSelect
               value={returner}
               onChange={setReturner}
-              members={members.filter(m => m.active && !["scouter", "scout"].includes(m.role))}
+              members={members.filter(m => m.active && (!["scouter", "scout"].includes(m.role)))}
               label='Returned By*'
             />
             <QMSelect value={checker} onChange={setChecker} members={members} />
@@ -874,21 +874,6 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
               </option>
             ))}
         </select>
-        {/* <button
-          onClick={addMember}
-          style={{
-            padding: '9px 16px',
-            background: ACCENT,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 700,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          + Add
-        </button> */}
       </div>
 
       {members.length === 0 ? (
@@ -993,6 +978,10 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
           disabled={!name.trim()}
           onClick={() => {
             if (name.trim()) {
+              console.log("saving members:", members.map(m => ({
+                name: m.name, 
+                is_leader: m.is_leader,
+              })))
               onSave({ name, type, members });
               onClose();
             }
