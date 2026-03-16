@@ -7,6 +7,8 @@ import { signOut } from './lib/auth';
 import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
+import troop_logo from './assets/troop_logo.png';
+import Overlay from './components/Overlay';
 
 // ─── Badge ─────────────────────────────────────────────────────────────────────
 function Badge({ type }) {
@@ -36,27 +38,7 @@ function Badge({ type }) {
   );
 }
 
-// ─── Overlay wrapper ───────────────────────────────────────────────────────────
-function Overlay({ children, wide }) {
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{
-        background: "#fff",
-        borderRadius: 20,
-        width: wide ? 680 : 460,
-        maxWidth: "100%",
-        maxHeight: "90vh",
-        overflowY: "auto",
-        padding: "32px 36px",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.18)",
-        border: "1px solid #e8e0d4",
-        color: "#000",
-      }}>
-        {children}
-      </div>
-    </div>
-  );
-}
+
 
 // ─── Check-out Modal ──────────────────────────────────────────────────────────
 function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
@@ -1805,7 +1787,11 @@ export default function App() {
             padding: '14px 0',
           }}
         >
-          <span style={{ fontSize: 34 }}>⚜️</span>
+          <img 
+            src={troop_logo}
+            alt="Troop Logo"
+            style={{ width: 40, height: 40, objectFit: 'contain'}}
+          />
           <div>
             <h1
               style={{
