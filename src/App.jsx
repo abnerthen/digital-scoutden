@@ -966,7 +966,7 @@ function RemoveItemModal({ item, onClose, onConfirm }) {
 }
 
 // ─── Group Manager Modal ───────────────────────────────────────────────────────
-function GroupModal({ group, onClose, onSave }) {
+function GroupModal({ group, availableMembers = [], onClose, onSave }) {
   const isEdit = !!group;
   const [name, setName] = useState(group?.name || '');
   const [type, setType] = useState(group?.type || 'led');
