@@ -1576,10 +1576,11 @@ export default function App() {
       checker_name: entry.checker || null,
       event: entry.event || null,
       notes: entry.notes || null,
+      
     }
     console.log('writing to supabase:', logEntry) 
-    await writeLog(logEntry);
-    setLog((prev) => [{ ...logEntry, id: Date.now(), ts: new Date() }, ...prev]);
+    const saved = await writeLog(logEntry);
+    setLog((prev) => [saved, ...prev]);
   }
 
   // ── Item handlers ──
@@ -2736,13 +2737,13 @@ export default function App() {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {entry.ts.toLocaleTimeString([], {
+                          {new Date(entry.created_at).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
                           <br />
                           <span style={{ fontSize: 11 }}>
-                            {entry.ts.toLocaleDateString()}
+                            {new Date(entry.created_at).toLocaleDateString()}
                           </span>
                         </td>
                         <td style={{ padding: '10px 13px' }}>
@@ -2755,7 +2756,7 @@ export default function App() {
                             fontFamily: "'Playfair Display',serif",
                           }}
                         >
-                          {entry.itemName}
+                          {entry.item_name}
                         </td>
                         <td style={{ padding: '10px 13px', fontWeight: 700 }}>
                           {entry.qty} {entry.unit}

@@ -10,8 +10,11 @@ export async function getLog() {
 }
 
 export async function writeLog(entry) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('log')
     .insert(entry)
+    .select()
+    .single()
   if (error) throw error
+  return data
 }
