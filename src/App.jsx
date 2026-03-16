@@ -8,9 +8,12 @@ import { createCheckout, closeTransaction, getOpenTransactions } from './lib/tra
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
 import troop_logo from './assets/troop_logo.png';
+
 import Overlay from './components/Overlay';
 import Badge from './components/Badge';
 import QMSelect from './components/QMSelect';
+import MemberSelect from './components/MemberSelect';
+import WriteOffModal from './components/modals/WriteOffModal';
 
 // ─── Check-out Modal ──────────────────────────────────────────────────────────
 function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
@@ -49,10 +52,11 @@ function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label style={labelStyle}>Requested By *</label>
-          <input placeholder="Scout applying to take out" value={requester} onChange={e => setRequester(e.target.value)} style={inputStyle} />
-        </div>
+        <MemberSelect
+          value={requester}
+          onChange={setRequester}
+          members={members}
+        />
         <QMSelect
           value={checker}
           onChange={setChecker}
@@ -199,14 +203,17 @@ function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
             style={inputStyle} />
 
           <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13, color: "#7a5800" }}>
-            Both <strong>Receiver</strong> and <strong>Checker</strong> must be filled.
+            Both <strong>Receiver</strong> and <strong>Checker</strong> must be filled. 
+            Purchases may only be received by <strong>Committee Members</strong>.
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Received By *</label>
-              <input placeholder="Who received the delivery" value={returner} onChange={e => setReturner(e.target.value)} style={inputStyle} />
-            </div>
+            <MemberSelect
+              value={returner}
+              onChange={setReturner}
+              members={members.filter(m => m.active && !["scouter", "scout"].includes(m.role))}
+              label='Received By (Committee Member)'
+            />
             <QMSelect value={checker} onChange={setChecker} members={members} />
           </div>
 
@@ -254,10 +261,12 @@ function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Returned By *</label>
-              <input placeholder="Who is handing items back" value={returner} onChange={e => setReturner(e.target.value)} style={inputStyle} />
-            </div>
+            <MemberSelect
+              value={returner}
+              onChange={setReturner}
+              members={members.filter(m => m.active && !["scouter", "scout"].includes(m.role))}
+              label='Returned By*'
+            />
             <QMSelect value={checker} onChange={setChecker} members={members} />
           </div>
 
@@ -288,87 +297,6 @@ function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
           </div>
         </>
       )}
-    </Overlay>
-  );
-}
-
-// ─── Write-off Modal ───────────────────────────────────────────────────────────
-function WriteOffModal({ item, onClose, onConfirm }) {
-  const unitsOut = item.total_owned - item.quantity;
-  const maxWriteOff = item.quantity;
-  const [qty, setQty] = useState(1);
-  const [qtyDisplay, setQtyDisplay] = useState("1");
-  const [reason, setReason] = useState("");
-
-  return (
-    <Overlay>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h2 style={{ ...modalTitleStyle, color: "#c62828" }}>✕ Write Off Units</h2>
-        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
-      </div>
-
-      <p style={{ color: "#555", marginBottom: 16, lineHeight: 1.5, fontSize: 14 }}>
-        Permanently reduce stock of <strong>{item.name}</strong>. Only units currently in store can be written off.
-        {unitsOut > 0 && <> <strong>{unitsOut}</strong> {item.unit} are currently checked out and cannot be written off until returned.</>}
-      </p>
-
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>In Store</div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: ACCENT }}>{item.quantity}</div>
-        </div>
-        <div style={{ flex: 1, background: "#fff3e0", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Out with Scouts</div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: unitsOut > 0 ? "#e65100" : DARK }}>{unitsOut}</div>
-        </div>
-        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Owned</div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif" }}>{item.total_owned}</div>
-        </div>
-      </div>
-
-      <label style={labelStyle}>Units to write off (max {maxWriteOff})</label>
-      <input
-        type="number"
-        min={1}
-        max={maxWriteOff}
-        value={qtyDisplay}
-        onChange={e => {
-          setQtyDisplay(e.target.value);
-          const n = parseInt(e.target.value);
-          if (!isNaN(n)) setQty(Math.max(1, Math.min(maxWriteOff, n)));
-        }}
-        onBlur={() => setQtyDisplay(String(qty))}
-        style={inputStyle}
-        disabled={maxWriteOff === 0}
-      />
-
-      <label style={labelStyle}>Reason</label>
-      <select value={reason} onChange={e => setReason(e.target.value)} style={inputStyle} disabled={maxWriteOff === 0}>
-        <option value="">Select a reason…</option>
-        <option>Damaged / broken</option>
-        <option>Lost at activity</option>
-        <option>Worn out / end of life</option>
-        <option>Stolen</option>
-        <option>Other</option>
-      </select>
-
-      <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "14px 0", fontSize: 13, color: "#7a5800" }}>
-        {maxWriteOff === 0
-          ? "⚠️ All units are currently checked out. Ask scouts to return items before writing off."
-          : <>⚠️ In-store stock will go from <strong>{item.quantity}</strong> → <strong>{item.quantity - qty}</strong>. Total owned from <strong>{item.total_owned}</strong> → <strong>{item.total_owned - qty}</strong>. This cannot be undone.</>
-        }
-      </div>
-
-      <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
-        <button
-          disabled={!reason || maxWriteOff === 0}
-          onClick={() => onConfirm({ qty, reason })}
-          style={{ ...btnBase, flex: 2, background: reason && maxWriteOff > 0 ? "#c62828" : "#eee", color: reason && maxWriteOff > 0 ? "#fff" : "#aaa", cursor: reason && maxWriteOff > 0 ? "pointer" : "not-allowed" }}>
-          {maxWriteOff === 0 ? "Nothing in store to write off" : `Write Off ${qty} ${item.unit}`}
-        </button>
-      </div>
     </Overlay>
   );
 }
@@ -1340,7 +1268,6 @@ function GroupDetailModal({ group, onClose, onEdit }) {
 
 // -- Member Management
 function AddMemberModal({ onClose, onAdd, onEdit, member }) {
-  console.log('onEdit prop:', member)  // add this temporarily
   const isEdit = !!member
   const [fullName, setFullName] = useState(member?.fullName ||"")
   const [email, setEmail] = useState(member?.email || "")
@@ -1405,12 +1332,12 @@ function AddMemberModal({ onClose, onAdd, onEdit, member }) {
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
         <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
         <button
-          disabled={!isEdit && !fullName.trim()}
+          disabled={!isEdit && !fullName.trim() && !email.trim()}
           onClick={handleSubmit}
           style={{ ...btnBase, flex: 2, 
-            background: (!isEdit &&fullName.trim()) ? "#eee" : ACCENT, 
-            color: !isEdit && !fullName.trim() ? "#aaa" : "#fff", 
-            cursor: !isEdit && !fullName.trim() ? "not-allowed" : "pointer"}}>
+            background: (!isEdit &&fullName.trim()) ?ACCENT : "#eee", 
+            color: !isEdit && !fullName.trim() && !email.trim() ? "#aaa" : "#fff", 
+            cursor: !isEdit && !fullName.trim() && !email.trim() ? "not-allowed" : "pointer"}}>
           {isEdit ? "Save Changes" : "Add Member"}
         </button>
       </div>
