@@ -2888,7 +2888,7 @@ export default function App() {
               <input 
                 placeholder="New category name"
                 value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
+                onChange={e => setNewCategory(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddCategory(newCategory.trim())}
                 style={{ ...inputStyle, flex: 1 }} />
                 <button 
@@ -2907,50 +2907,49 @@ export default function App() {
                 </button>
             </div>
 
-            {categories.map((cat, i) => (
-              <div key={cat.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: i < categories.length - 1 ? "1px solid #f0ece4" : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                  {cat.protected && (
-                    <span style={{ fontSize: 11, background: "#f5f0e8", color: "#888", borderRadius: 6, padding: "2px 8px" }}>protected</span>
-                  )}
-                </div>
-                {!cat.protected && (
-                  <button
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    style={{ padding: "5px 12px", background: "#fce4ec", color: "#c62828", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-
             <div style={{ 
               background: "#fff", 
               borderRadius: 14, 
               border: "1px solid #e8e0d4", 
               overflow: "hidden" }}>
               {categories.map((cat, i) => (
-                <div key={cat.id} style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "space-between", 
-                  padding: "12px 18px", 
-                  borderBottom: i < categories.length - 1 ? "1px solid #f0ece4" : "none" }}>
-                  <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                  <button
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    style={{ 
-                      padding: "5px 12px", 
-                      background: "#fce4ec", 
-                      color: "#c62828", 
-                      border: "none", 
-                      borderRadius: 7, 
-                      fontWeight: 600, 
-                      cursor: "pointer", 
-                      fontSize: 12 }}>
-                    Remove
-                  </button>
+                <div 
+                  key={cat.id} 
+                  style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "space-between", 
+                    padding: "12px 18px", 
+                    borderBottom: i < categories.length - 1 ? "1px solid #f0ece4" : "none" 
+                  }}
+                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                    {cat.protected && (
+                      <span style={{ 
+                        fontSize: 11, 
+                        color: "#1565c0", 
+                        background: "#e3f2fd", 
+                        padding: "2px 6px", 
+                        borderRadius: 6 
+                        }}>Protected</span>
+                      )}
+                  </div>
+                  {!cat.protected && (
+                    <button
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      style={{ 
+                        padding: "5px 12px", 
+                        background: "#fce4ec", 
+                        color: "#c62828", 
+                        border: "none", 
+                        borderRadius: 7, 
+                        fontWeight: 600, 
+                        cursor: "pointer", 
+                        fontSize: 12 }}>
+                      Remove
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
