@@ -178,7 +178,7 @@ function Overlay({ children, wide }) {
 }
 
 // ─── Check-out Modal ──────────────────────────────────────────────────────────
-function CheckOutModal({ item, groups, onClose, onConfirm }) {
+function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState("1");
   const [groupId, setGroupId] = useState("");
@@ -188,6 +188,8 @@ function CheckOutModal({ item, groups, onClose, onConfirm }) {
   const [remarks, setRemarks] = useState("");
   const max = item.quantity;
   const selectedGroup = groups.find(g => g.id === groupId);
+  // const qmMembers = members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role) && m.active);
+  // console.log(qmMembers);
 
   return (
     <Overlay wide>
@@ -216,10 +218,11 @@ function CheckOutModal({ item, groups, onClose, onConfirm }) {
           <label style={labelStyle}>Requested By *</label>
           <input placeholder="Scout applying to take out" value={requester} onChange={e => setRequester(e.target.value)} style={inputStyle} />
         </div>
-        <div>
-          <label style={labelStyle}>Checked By (QM on duty) *</label>
-          <input placeholder="Quartermaster processing this" value={checker} onChange={e => setChecker(e.target.value)} style={inputStyle} />
-        </div>
+        <QMSelect
+          value={checker}
+          onChange={setChecker}
+          members={members}
+        />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -262,7 +265,11 @@ function CheckOutModal({ item, groups, onClose, onConfirm }) {
         <button
           disabled={!requester.trim() || !checker.trim()}
           onClick={() => onConfirm({ qty, groupId, groupName: selectedGroup?.name || requester, requester, checker, event, remarks })}
-          style={{ ...btnBase, flex: 2, background: requester.trim() && checker.trim() ? ACCENT2 : "#eee", color: requester.trim() && checker.trim() ? "#fff" : "#aaa", cursor: requester.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+          style={{ ...btnBase, 
+            flex: 2, 
+            background: requester.trim() && checker.trim() ? ACCENT2 : "#eee", 
+            color: requester.trim() && checker.trim() ? "#fff" : "#aaa", 
+            cursor: requester.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
           Confirm Check Out
         </button>
       </div>
@@ -271,19 +278,29 @@ function CheckOutModal({ item, groups, onClose, onConfirm }) {
 }
 
 // ─── Check-in Modal ────────────────────────────────────────────────────────────
-function CheckInModal({ item, openTransactions, onClose, onConfirm }) {
-  const maxIn = item.totalOwned - item.quantity;
+function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
+  console.log('CheckInModal openTransactions:', openTransactions)
+  const maxIn = (item.total_owned || 0) - (item.quantity || 0);
+  const hasPendingDelivery = maxIn > 0 && openTransactions.length === 0 || 
+    (item.total_owned || 0) > (item.quantity || 0) + openTransactions.reduce((sum, t) => sum + t.qty, 0);
+  const bothAvailable = openTransactions.length > 0 && hasPendingDelivery;
+  const unitsOut = openTransactions.reduce((sum, t) => sum + t.qty, 0);
+  const pendingUnits = maxIn - unitsOut;
+  const [qty, setQty] = useState(pendingUnits);
+  const [qtyDisplay, setQtyDisplay] = useState(String(pendingUnits));
   const [selectedTxId, setSelectedTxId] = useState(openTransactions[0]?.id || "");
   const [returner, setReturner] = useState("");
   const [checker, setChecker] = useState("");
   const [remarks, setRemarks] = useState("");
   const [condition, setCondition] = useState("Good");
+  const [mode, setMode] = useState(openTransactions.length > 0 ? "return" : "delivery");
+  const isPendingDelivery = mode === "delivery";
   const selectedTx = openTransactions.find(t => t.id === selectedTxId);
 
   return (
     <Overlay wide>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h2 style={modalTitleStyle}>▲ Check In: {item.name}</h2>
+        <h2 style={modalTitleStyle}>{isPendingDelivery ? "▲ Receive Delivery" : "▲ Check In"}: {item.name}</h2>
         <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
       </div>
 
@@ -293,12 +310,85 @@ function CheckInModal({ item, openTransactions, onClose, onConfirm }) {
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: ACCENT }}>{item.quantity}</div>
         </div>
         <div style={{ flex: 1, background: "#e8f5e9", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Outstanding</div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: maxIn > 0 ? "#e65100" : DARK }}>{maxIn}</div>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            {isPendingDelivery ? "Pending Delivery" : "Outstanding"}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: (isPendingDelivery ? pendingUnits : maxIn) > 0 ? "#e65100" : DARK }}>
+            {isPendingDelivery ? pendingUnits : maxIn}
+          </div>
         </div>
       </div>
 
-      {openTransactions.length === 0 ? (
+      {bothAvailable && (
+        <div style={{ 
+          display: "flex", 
+          gap: 8, 
+          marginBottom: 16 }}>
+            {[
+              { value: "return", label: "Return Checked-Out Item(s)" },
+              { value: "delivery", label: "Receive Pending Delivery" },
+            ].map(opt => (
+              <div key={opt.value} onClick={() => setMode(opt.value)}
+                style={{ 
+                  flex: 1, 
+                  textAlign: "center", 
+                  padding: "9px 0", 
+                  borderRadius: 8, 
+                  cursor: "pointer", 
+                  fontWeight: 700, 
+                  fontSize: 13,
+                  background: mode === opt.value ? "#f0f7f0" : "#f5f5f5",
+                  color: mode === opt.value ? ACCENT : "#888",
+                  border: `2px solid ${mode === opt.value ? "#a5d6a7" : "transparent"}`
+                }}>
+              {opt.label}
+                </div>
+        ))}
+        </div>
+      )}
+
+      {isPendingDelivery ? (
+        <>
+          <div style={{ background: "#e3f2fd", border: "1px solid #90caf9", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#1565c0" }}>
+            🚚 Receiving a pending delivery. These units were purchased but not yet received into the storeroom.
+          </div>
+
+          <label style={labelStyle}>Units to receive (max {pendingUnits})</label>
+          <input
+            type="number" min={1} max={pendingUnits} value={qtyDisplay}
+            onChange={e => { 
+              setQtyDisplay(e.target.value); 
+              const n = parseInt(e.target.value); 
+              if (!isNaN(n)) setQty(Math.max(1, Math.min(pendingUnits, n))); }}
+            onBlur={() => setQtyDisplay(String(Math.min(qty, pendingUnits)))}
+            style={inputStyle} />
+
+          <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13, color: "#7a5800" }}>
+            Both <strong>Receiver</strong> and <strong>Checker</strong> must be filled.
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Received By *</label>
+              <input placeholder="Who received the delivery" value={returner} onChange={e => setReturner(e.target.value)} style={inputStyle} />
+            </div>
+            <QMSelect value={checker} onChange={setChecker} members={members} />
+          </div>
+
+          <label style={labelStyle}>Remarks</label>
+          <textarea rows={2} placeholder="Delivery notes, supplier reference…" value={remarks} onChange={e => setRemarks(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
+
+          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+            <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+            <button
+              disabled={!returner.trim() || !checker.trim()}
+              onClick={() => onConfirm({ txId: null, qty, groupId: null, groupName: null, returner, checker, condition: "Good", remarks, isPendingDelivery: true })}
+              style={{ ...btnBase, flex: 2, background: returner.trim() && checker.trim() ? ACCENT : "#eee", color: returner.trim() && checker.trim() ? "#fff" : "#aaa", cursor: returner.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+              Receive {qty} {item.unit}
+            </button>
+          </div>
+        </>
+      ) : openTransactions.length === 0 ? (
         <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "14px", fontSize: 14, color: "#7a5800" }}>
           No open checkouts found for this item. All units are already in store.
         </div>
@@ -333,10 +423,7 @@ function CheckInModal({ item, openTransactions, onClose, onConfirm }) {
               <label style={labelStyle}>Returned By *</label>
               <input placeholder="Who is handing items back" value={returner} onChange={e => setReturner(e.target.value)} style={inputStyle} />
             </div>
-            <div>
-              <label style={labelStyle}>Checked By (QM on duty) *</label>
-              <input placeholder="Quartermaster receiving this" value={checker} onChange={e => setChecker(e.target.value)} style={inputStyle} />
-            </div>
+            <QMSelect value={checker} onChange={setChecker} members={members} />
           </div>
 
           <label style={labelStyle}>Condition on Return</label>
@@ -359,7 +446,7 @@ function CheckInModal({ item, openTransactions, onClose, onConfirm }) {
             <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
             <button
               disabled={!returner.trim() || !checker.trim() || !selectedTxId}
-              onClick={() => onConfirm({ txId: selectedTxId, qty: selectedTx?.qty || 1, groupId: selectedTx?.group_id, groupName: selectedTx?.group_id, returner, checker, condition, remarks })}
+              onClick={() => onConfirm({ txId: selectedTxId, qty: selectedTx?.qty || 1, groupId: selectedTx?.group_id, groupName: selectedTx?.group_id, returner, checker, condition, remarks, isPendingDelivery: false })}
               style={{ ...btnBase, flex: 2, background: returner.trim() && checker.trim() ? ACCENT : "#eee", color: returner.trim() && checker.trim() ? "#fff" : "#aaa", cursor: returner.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
               Confirm Return
             </button>
@@ -372,76 +459,57 @@ function CheckInModal({ item, openTransactions, onClose, onConfirm }) {
 
 // ─── Write-off Modal ───────────────────────────────────────────────────────────
 function WriteOffModal({ item, onClose, onConfirm }) {
+  const unitsOut = item.total_owned - item.quantity;
+  const maxWriteOff = item.quantity;
   const [qty, setQty] = useState(1);
-  const [qtyDisplay, setQtyDisplay] = useState('1');
-  const [reason, setReason] = useState('');
-  const max = item.quantity;
+  const [qtyDisplay, setQtyDisplay] = useState("1");
+  const [reason, setReason] = useState("");
+
   return (
     <Overlay>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 8,
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: "'Playfair Display',serif",
-            fontSize: 20,
-            color: '#c62828',
-          }}
-        >
-          ✕ Write Off Units
-        </h2>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: 22,
-            cursor: 'pointer',
-            color: '#888',
-          }}
-        >
-          ✕
-        </button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <h2 style={{ ...modalTitleStyle, color: "#c62828" }}>✕ Write Off Units</h2>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
       </div>
-      <p
-        style={{
-          color: '#555',
-          marginBottom: 16,
-          lineHeight: 1.5,
-          fontSize: 14,
-        }}
-      >
-        Permanently reduce stock of <strong>{item.name}</strong>. The item stays
-        in inventory — only the unit count drops.
+
+      <p style={{ color: "#555", marginBottom: 16, lineHeight: 1.5, fontSize: 14 }}>
+        Permanently reduce stock of <strong>{item.name}</strong>. Only units currently in store can be written off.
+        {unitsOut > 0 && <> <strong>{unitsOut}</strong> {item.unit} are currently checked out and cannot be written off until returned.</>}
       </p>
 
-      <label style={labelStyle}>Units to write off (max {item.quantity})</label>
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>In Store</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: ACCENT }}>{item.quantity}</div>
+        </div>
+        <div style={{ flex: 1, background: "#fff3e0", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Out with Scouts</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: unitsOut > 0 ? "#e65100" : DARK }}>{unitsOut}</div>
+        </div>
+        <div style={{ flex: 1, background: "#f5f0e8", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Owned</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif" }}>{item.total_owned}</div>
+        </div>
+      </div>
+
+      <label style={labelStyle}>Units to write off (max {maxWriteOff})</label>
       <input
         type="number"
         min={1}
-        max={item.quantity}
+        max={maxWriteOff}
         value={qtyDisplay}
-        onChange={(e) => {
+        onChange={e => {
           setQtyDisplay(e.target.value);
-          const num = parseInt(e.target.value);
-          if (!isNaN(num)) setQty(Math.max(1, Math.min(max, num)));
+          const n = parseInt(e.target.value);
+          if (!isNaN(n)) setQty(Math.max(1, Math.min(maxWriteOff, n)));
         }}
         onBlur={() => setQtyDisplay(String(qty))}
         style={inputStyle}
+        disabled={maxWriteOff === 0}
       />
 
       <label style={labelStyle}>Reason</label>
-      <select
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        style={inputStyle}
-      >
+      <select value={reason} onChange={e => setReason(e.target.value)} style={inputStyle} disabled={maxWriteOff === 0}>
         <option value="">Select a reason…</option>
         <option>Damaged / broken</option>
         <option>Lost at activity</option>
@@ -450,41 +518,20 @@ function WriteOffModal({ item, onClose, onConfirm }) {
         <option>Other</option>
       </select>
 
-      <div
-        style={{
-          background: '#fff8e1',
-          border: '1px solid #ffe082',
-          borderRadius: 8,
-          padding: '10px 14px',
-          margin: '14px 0',
-          fontSize: 13,
-          color: '#7a5800',
-        }}
-      >
-        ⚠️ Stock will go from <strong>{item.quantity}</strong> →{' '}
-        <strong>{item.quantity - qty}</strong> {item.unit}. This cannot be
-        undone.
+      <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "14px 0", fontSize: 13, color: "#7a5800" }}>
+        {maxWriteOff === 0
+          ? "⚠️ All units are currently checked out. Ask scouts to return items before writing off."
+          : <>⚠️ In-store stock will go from <strong>{item.quantity}</strong> → <strong>{item.quantity - qty}</strong>. Total owned from <strong>{item.total_owned}</strong> → <strong>{item.total_owned - qty}</strong>. This cannot be undone.</>
+        }
       </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
         <button
-          onClick={onClose}
-          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
-        >
-          Cancel
-        </button>
-        <button
-          disabled={!reason}
+          disabled={!reason || maxWriteOff === 0}
           onClick={() => onConfirm({ qty, reason })}
-          style={{
-            ...btnBase,
-            flex: 2,
-            background: reason ? '#c62828' : '#eee',
-            color: reason ? '#fff' : '#aaa',
-            cursor: reason ? 'pointer' : 'not-allowed',
-          }}
-        >
-          Write Off {qty} {item.unit}
+          style={{ ...btnBase, flex: 2, background: reason && maxWriteOff > 0 ? "#c62828" : "#eee", color: reason && maxWriteOff > 0 ? "#fff" : "#aaa", cursor: reason && maxWriteOff > 0 ? "pointer" : "not-allowed" }}>
+          {maxWriteOff === 0 ? "Nothing in store to write off" : `Write Off ${qty} ${item.unit}`}
         </button>
       </div>
     </Overlay>
@@ -1441,7 +1488,7 @@ function GroupDetailModal({ group, onClose, onEdit }) {
   );
 }
 
-// -- Member Modal ───────────────────────────────────────────────────────────────
+// -- Member Management
 function AddMemberModal({ onClose, onAdd, onEdit, member }) {
   console.log('onEdit prop:', member)  // add this temporarily
   const isEdit = !!member
@@ -1521,6 +1568,25 @@ function AddMemberModal({ onClose, onAdd, onEdit, member }) {
   )
 }
 
+function QMSelect({ value, onChange, members, label = "Checked by (QM on duty)" }) {
+  const qmMembers = members.filter(m => 
+    ["quartermaster", "assistant_qm"].includes(m.role) && m.active
+  );
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+        <option value="">Select a Quartermaster</option>
+        {qmMembers.map(m => (
+          <option key={m.id} value={m.full_name}>
+            {m.full_name}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 // ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [items, setItems] = useState([]);
@@ -1576,7 +1642,7 @@ export default function App() {
       checker_name: entry.checker || null,
       event: entry.event || null,
       notes: entry.notes || null,
-      
+
     }
     console.log('writing to supabase:', logEntry) 
     const saved = await writeLog(logEntry);
@@ -1595,7 +1661,15 @@ export default function App() {
       checkout_remarks: remarks || null,
       checked_out_at: new Date(),
     }
-    await createCheckout(tx)
+    const saved = await createCheckout(tx)
+    console.log('saved tx:', saved)
+    console.log('transactions after:', transactions)
+    setTransactions(prev => {
+      console.log('prev tx:', prev)
+      const updated = [...prev, saved]
+      console.log('updated tx:', updated)
+      return updated
+    })
     await updateItemQuantity(item.id, item.quantity - qty, item.total_owned)
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - qty } : i))
     if (groupId) {
@@ -1617,26 +1691,22 @@ export default function App() {
     setModal(null)
   }
 
-  const handleCheckIn = async (item, { txId, qty, groupId, groupName, returner, checker, condition, remarks }) => {
-    await closeTransaction(txId, {
-      returner_name: returner,
-      return_checker_name: checker,
-      condition,
-      return_remarks: remarks || null,
-    })
-    await updateItemQuantity(item.id, item.quantity + qty, item.total_owned)
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + qty } : i))
-    setTransactions(prev => prev.filter(t => t.id !== txId))
-    if (groupId) {
-      setGroups(prev => prev.map(g => {
-        if (g.id !== groupId) return g
-        const idx = (g.checkouts || []).findIndex(c => c.itemId === item.id)
-        if (idx === -1) return g
-        const updated = [...g.checkouts]
-        updated.splice(idx, 1)
-        return { ...g, checkouts: updated }
-      }))
+  const handleCheckIn = async (item, { txId, qty, groupId, groupName, returner, checker, condition, remarks, isPendingDelivery }) => {
+    const newQty = (item.quantity || 0) + qty;
+
+    if (!isPendingDelivery && txId) {
+      await closeTransaction(txId, {
+        returner_name: returner,
+        return_checker_name: checker,
+        condition,
+        return_remarks: remarks || null,
+      })
+      setTransactions(prev => prev.filter(t => t.id !== txId))
     }
+
+    await updateItemQuantity(item.id, newQty, item.total_owned)
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: newQty } : i))
+
     await addLog({
       type: 'IN',
       itemId: item.id,
@@ -1645,8 +1715,8 @@ export default function App() {
       unit: item.unit,
       returner: returner || null,
       checker: checker || null,
-      event: null,
-      notes: `${condition}${remarks ? ' — ' + remarks : ''}`,
+      event: isPendingDelivery ? 'Delivery received' : null,
+      notes: isPendingDelivery ? remarks || null : `${condition}${remarks ? ' — ' + remarks : ''}`,
     })
     setModal(null)
   }
@@ -2127,7 +2197,16 @@ export default function App() {
                 gap: 14,
               }}
             >
-              {displayItems.map((item) => (
+              {displayItems.map((item) => {
+                const unitsAccountedFor = (item.quantity || 0) + transactions
+                  .filter(t => t.item_id === item.id && t.returned_at === null)
+                  .reduce((sum, t) => sum + t.qty, 0)
+
+                const hasPendingDelivery = (item.total_owned || 0) > unitsAccountedFor
+                const hasOpenTransactions = transactions.some(t => t.item_id === item.id && t.returned_at === null)
+                const canCheckIn = hasOpenTransactions || hasPendingDelivery
+                console.log(`item ${item.name} — quantity: ${item.quantity}, total_owned: ${item.total_owned}, hasPendingDelivery: ${hasPendingDelivery}, canCheckIn: ${canCheckIn}`)
+              return (
                 <div
                   key={item.id}
                   style={{
@@ -2307,28 +2386,27 @@ export default function App() {
                             onClick={() =>
                               setModal({ type: 'checkin', item })
                             }
-                            disabled={item.quantity >= item.total_owned}
-                            title={
-                              item.quantity >= item.total_owned
-                                ? 'All owned units are already in store'
-                                : 'Check units back in'
+                            disabled={!canCheckIn}
+                            title={!canCheckIn
+                              ? "No open checkouts for this item"
+                              : "Return units to store"
                             }
                             style={{
                               flex: 1,
                               padding: '7px 0',
                               background:
-                                item.quantity >= item.total_owned
+                                !canCheckIn
                                   ? '#eee'
                                   : '#e8f5e9',
                               color:
-                                item.quantity >= item.total_owned
+                                !canCheckIn
                                   ? '#ccc'
                                   : '#2e7d32',
                               border: 'none',
                               borderRadius: 7,
                               fontWeight: 700,
                               cursor:
-                                item.quantity >= item.total_owned
+                                !hasOpenTransactions
                                   ? 'not-allowed'
                                   : 'pointer',
                               fontSize: 12,
@@ -2391,7 +2469,8 @@ export default function App() {
                     )}
                   </div>
                 </div>
-              ))}
+              )}
+              )}
               {displayItems.length === 0 && (
                 <p
                   style={{
@@ -2884,14 +2963,20 @@ export default function App() {
       {/* MODALS */}
       {modal?.type === "checkout" && (
         <CheckOutModal item={modal.item} groups={groups}
+          members={members}
           onClose={() => setModal(null)}
           onConfirm={d => handleCheckOut(modal.item, d)} />
       )}
       {modal?.type === "checkin" && (
+        <>
+        {console.log('passing OpenTransactions:', transactions.filter(t => t.item_id === modal.item.id && t.returned_at === null))}
         <CheckInModal item={modal.item}
-          openTransactions={transactions.filter(t => t.itemId === modal.item.id)}
+          openTransactions={transactions.filter(t => 
+            t.item_id === modal.item.id && t.returned_at === null)}
+          members={members}
           onClose={() => setModal(null)}
           onConfirm={d => handleCheckIn(modal.item, d)} />
+        </>
       )}
       {modal?.type === 'writeoff' && (
         <WriteOffModal
