@@ -4,7 +4,7 @@ import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
 import { signOut } from './lib/auth';
 import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
-import { getMembers, addMember, deactivateMember, updateMember } from './lib/members';
+import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
 
 
@@ -1601,7 +1601,9 @@ export default function App() {
   const [filterCat, setFilterCat] = useState('All');
   const [showRemoved, setShowRemoved] = useState(false);
   const [loading, setLoading] = useState([]);
-  const [newCategory, setNewCategory] = useState("")
+  const [newCategory, setNewCategory] = useState("");
+  const [inactiveMembers, setInactiveMembers] = useState([])
+  const [showInactive, setShowInactive] = useState(false)
   const nextId = useRef(200);
 
   useEffect(() => {
@@ -1624,6 +1626,13 @@ export default function App() {
     }
     load();
   }, [])
+
+  // useEffect to load inactive members when switching to members tab
+  useEffect(() => {
+    if (activeTab === 'members') {
+      getInactiveMembers().then(setInactiveMembers)
+    }
+  }, [activeTab])
 
   if (loading) return (
     <div style={{ padding: 40, fontFamily: 'serif' }}>Loading storeroom...</div>
@@ -1857,6 +1866,12 @@ export default function App() {
       console.error('handleEditMember error:', err)
       alert(err.message)
     }
+  }
+
+  const handleRestoreMember = async (id) => {
+    const restored = await restoreMember(id)
+    setMembers(prev => [...prev, restored])
+    setInactiveMembers(prev => prev.filter(m => m.id !== id))
   }
 
   // ── Derived ──
@@ -2678,21 +2693,147 @@ export default function App() {
         {/* -- MEMBERS TAB -- */}
         {activeTab === "members" && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <p style={{ margin: 0, color: "#777", fontSize: 14 }}>Manage troop members and their roles.</p>
-              <button onClick={() => setModal({ type: "addMember" })}
-                style={{ padding: "8px 16px", background: ACCENT, color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
-                👤 Add Member
-              </button>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", marginBottom: 18 }}>
+              <p style={{ 
+                margin: 0, 
+                color: "#777", 
+                fontSize: 14 
+                }}>Manage troop members and their roles.</p>
+              <div style={{
+                display: "flex",
+                gap: 8,
+              }}>
+                <button onClick={() => setShowInactive(v => !v)}
+                  style={{
+                    padding: "8px 14px",
+                    background: showInactive 
+                      ? "#fce4ec"
+                      : "#f5f0e8",
+                    color: showInactive
+                      ? "#c62828"
+                      : "#666",
+                    border: showInactive
+                      ? "1.5px solid #ef9a9a"
+                      : "1.5px solid #ddd",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}>{showInactive ? "👁 Viewing Removed" : "🗑️ Show Removed"}
+                </button>
+                <button onClick={() => setModal({ type: "addMember" })}
+                  style={{ 
+                    padding: "8px 16px", 
+                    background: ACCENT, 
+                    color: "#fff", 
+                    border: "none", 
+                    borderRadius: 8, 
+                    fontWeight: 700, 
+                    cursor: "pointer", 
+                    fontSize: 13 }}>
+                  👤 Add Member
+                </button>
+              </div>
             </div>
 
-            {members.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>👤</div>
-                <p style={{ fontStyle: "italic", fontSize: 15 }}>No members yet. Add scouts and committee members.</p>
-              </div>
+            {showInactive ? (
+              <>
+                {inactiveMembers.length === 0 ? (
+                  <div style={{ 
+                    textAlign: "center",
+                    padding: "40px 20px",
+                    color: "#bbb"
+                  }}>
+                    <p style={{ fontStyle: "italic" }}>No removed members.</p>
+                  </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e8e0d4", overflow: "hidden" }}>
+              <div style={{ 
+                background: "#fff",
+                borderRadius: 14,
+                border: "1px solid #e8e0d4",
+                overflow: "hidden" 
+              }}>
+                {inactiveMembers.map((member, i) => (
+                  <div key={member.id} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "14px 18px",
+                    borderBottom: i < inactiveMembers.length - 1 
+                      ? "1px solid #f0ece4"
+                      : "none",
+                    opacity: 0.7,
+                  }}>
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      background: "#e0e0e0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 18,
+                      flexShrink: 0,
+                    }}>
+                      🧑
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontWeight: 700,
+                        fontFamily: "'Playfair Display', serif",
+                        fontSize: 15,
+                        textDecoration: "line-through",
+                        color: "#aaa",
+                      }}>{member.full_name}</div>
+                      <div style={{
+                        fontSize: 12,
+                        color: "#aaa",
+                        marginTop: 2
+                      }}>
+                        {member.email || "No email"} · {ROLES.find(r => r.value === member.role)?.label || member.role}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleRestoreMember(member.id)} 
+                      style={{
+                        padding: "6px 12px",
+                        background: "#e3f2fd",
+                        color: "#2e7d32",
+                        border: "none",
+                        borderRadius: 7,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontSize: 12,
+                      }}> 
+                      ↩ Restore
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          members.length === 0 ? (
+            <div style={{ 
+              textAlign: "center", 
+              padding: "60px 20px", 
+              color: "#bbb" }}>
+              <div style={{ 
+                fontSize: 48, 
+                marginBottom: 12 }}>👤</div>
+              <p style={{ 
+                fontStyle: "italic", 
+                fontSize: 15 }}>No members yet. Add scouts and committee members.</p>
+            </div>
+          ) : (
+              <div style={{ 
+                background: "#fff", 
+                borderRadius: 14, 
+                border: "1px solid #e8e0d4", 
+                overflow: "hidden" }}>
                 {members.map((member, i) => (
                   <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: i < members.length - 1 ? "1px solid #f0ece4" : "none" }}>
                     <div style={{ width: 40, height: 40, 
@@ -2737,9 +2878,10 @@ export default function App() {
                   </div>
                 ))}
               </div>
-            )}
-          </>
+          )
         )}
+      </>
+      )}
 
         {/* ── LOG TAB ── */}
         {activeTab === 'log' && (
