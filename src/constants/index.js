@@ -1,9 +1,9 @@
-const ACCENT = '#2e7d32';
-const ACCENT2 = '#ff8f00';
-const BG = '#f5f0e8';
-const DARK = '#1a1a1a';
+export const ACCENT = '#2e7d32';
+export const ACCENT2 = '#ff8f00';
+export const BG = '#f5f0e8';
+export const DARK = '#1a1a1a';
 
-const ROLES = [
+export const ROLES = [
   { value: "scout", label: "Scout" },
   { value: "troop_leader", label: "Troop Leader" },
   { value: "assistant_leader", label: "Assistant Troop Leader" },
@@ -14,7 +14,7 @@ const ROLES = [
 ]
 
 // ─── Shared styles
-const labelStyle = {
+export const labelStyle = {
   display: "block",
   fontSize: 11,
   fontWeight: 700,
@@ -24,7 +24,8 @@ const labelStyle = {
   textTransform: "uppercase",
   letterSpacing: 0.8,
 };
-const inputStyle = {
+
+export const inputStyle = {
   width: '100%',
   boxSizing: 'border-box',
   padding: '9px 12px',
@@ -36,7 +37,8 @@ const inputStyle = {
   background: '#fff',
   color: '#1a1a1a'
 };
-const btnBase = {
+
+export const btnBase = {
   border: 'none',
   borderRadius: 10,
   fontWeight: 700,
@@ -45,7 +47,7 @@ const btnBase = {
   padding: '11px 0',
 };
 
-const modalTitleStyle = { 
+export const modalTitleStyle = { 
   margin: 0, 
   fontFamily: "'Playfair Display',serif", 
   fontSize: 20,
