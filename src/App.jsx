@@ -492,7 +492,7 @@ function WriteOffModal({ item, onClose, onConfirm }) {
 }
 
 // ─── Add Item Modal (new purchase) ────────────────────────────────────────────
-function AddItemModal({ onClose, onAdd }) {
+function AddItemModal({ onClose, onAdd, categories }) {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [qty, setQty] = useState(1);
@@ -561,11 +561,11 @@ function AddItemModal({ onClose, onAdd }) {
       />
       <label style={labelStyle}>Category</label>
       <select
-        value={cat}
+        value={categoryId}
         onChange={(e) => setCategoryId(e.target.value)}
         style={inputStyle}
       >
-        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ flex: 1 }}>
@@ -598,13 +598,13 @@ function AddItemModal({ onClose, onAdd }) {
       </div>
             <label style={labelStyle}>Item Photo (optional)</label>
       <div
-        onClick={() => fileRef.current.click()}
+        onClick={() => fileInputRef.current.click()}
         style={{ border: `2px dashed #ddd`, borderRadius: 10, padding: "16px", textAlign: "center", cursor: "pointer", background: "#fafafa", marginTop: 4 }}>
         {imagePreview
           ? <img src={imagePreview} alt="preview" style={{ maxHeight: 140, maxWidth: "100%", borderRadius: 8 }} />
           : <><div style={{ fontSize: 28, marginBottom: 4 }}>🖼️</div><p style={{ margin: 0, color: "#aaa", fontSize: 13 }}>Click to upload a photo</p></>
         }
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
       </div>
       <label style={labelStyle}>Notes</label>
       <textarea
@@ -2047,7 +2047,7 @@ export default function App() {
                 style={{ ...inputStyle, width: 'auto', flex: 'none' }}
               >
                 <option value="All">All Categories</option>
-                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <button
                 onClick={() => setShowRemoved((v) => !v)}
@@ -2900,7 +2900,10 @@ export default function App() {
         />
       )}
       {modal?.type === 'addItem' && (
-        <AddItemModal onClose={() => setModal(null)} onAdd={handleAddItem} />
+        <AddItemModal 
+          onClose={() => setModal(null)} 
+          onAdd={handleAddItem} 
+          categories={categories} />
       )}
       {modal?.type === 'buyMore' && (
         <BuyMoreModal
