@@ -6,7 +6,11 @@ export async function getGroups() {
     .select('*, group_members(*)')
     .order('name')
   if (error) throw error
-  return data
+  return data.map(group => ({
+    ...group,
+    members: group.group_members || [],
+    checkouts: [],
+  }))
 }
 
 export async function saveGroup(group) {
@@ -22,9 +26,25 @@ export async function saveGroup(group) {
     await supabase.from('group_members').delete().eq('group_id', data.id)
     if (members.length > 0) {
       await supabase.from('group_members').insert(
-        members.map(m => ({ ...m, group_id: data.id }))
+        members.map(m => ({
+          group_id: data.id,
+          member_id: m.member_id || null,
+          name: m.name,
+          is_leader: m.is_leader || false,
+        }))
       )
     }
   }
-  return data
+
+  const { data: fullGroup, error: fetchError } = await supabase
+    .from('groups')
+    .select('*, group_members(*)')
+    .eq('id', data.id)
+    .single()
+  if (fetchError) throw fetchError
+  return {
+    ...fullGroup,
+    members: fullGroup.group_members || [],
+    checkouts: [],
+  }
 }

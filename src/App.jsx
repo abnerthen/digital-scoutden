@@ -9,36 +9,8 @@ import { getMembers, addMember, deactivateMember, updateMember, restoreMember, g
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
 import troop_logo from './assets/troop_logo.png';
 import Overlay from './components/Overlay';
-
-// ─── Badge ─────────────────────────────────────────────────────────────────────
-function Badge({ type }) {
-  const map = {
-    IN: { bg: '#e8f5e9', color: '#2e7d32', label: '▲ IN' },
-    OUT: { bg: '#fff3e0', color: '#e65100', label: '▼ OUT' },
-    ADD: { bg: '#e3f2fd', color: '#1565c0', label: '+ NEW' },
-    WRITEOFF: { bg: '#fce4ec', color: '#c62828', label: '✕ WRITE-OFF' },
-    DELETE: { bg: '#f3e5f5', color: '#6a1b9a', label: '✕ ARCHIVED' },
-  };
-  const s = map[type] || map.ADD;
-  return (
-    <span
-      style={{
-        background: s.bg,
-        color: s.color,
-        borderRadius: 6,
-        padding: '2px 8px',
-        fontSize: 11,
-        fontWeight: 700,
-        fontFamily: 'monospace',
-        letterSpacing: 1,
-      }}
-    >
-      {s.label}
-    </span>
-  );
-}
-
-
+import Badge from './components/Badge';
+import QMSelect from './components/QMSelect';
 
 // ─── Check-out Modal ──────────────────────────────────────────────────────────
 function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
@@ -844,21 +816,21 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
       id: Date.now(),
       member_id: selected.id,
       name: selected.full_name,
-      isLeader: isFirst && type === "led"
+      is_leader: isFirst && type === "led"
     }])
     setNewMember("")
   };
 
   const removeMember = (id) => {
-    const wasLeader = members.find((m) => m.id === id)?.isLeader;
+    const wasLeader = members.find((m) => m.id === id)?.is_leader;
     const updated = members.filter((m) => m.id !== id);
     if (type === 'led' && wasLeader && updated.length > 0)
-      updated[0].isLeader = true;
+      updated[0].is_leader = true;
     setMembers(updated);
   };
 
   const setLeader = (id) =>
-    setMembers((prev) => prev.map((m) => ({ ...m, isLeader: m.id === id })));
+    setMembers((prev) => prev.map((m) => ({ ...m, is_leader: m.id === id })));
 
   return (
     <Overlay wide>
@@ -919,7 +891,7 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
               setType(opt.val);
               if (opt.val === 'collective')
                 setMembers((prev) =>
-                  prev.map((m) => ({ ...m, isLeader: false }))
+                  prev.map((m) => ({ ...m, is_leader: false }))
                 );
             }}
             style={{
@@ -947,7 +919,20 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <select
           value={newMember}
-          onChange={e => setNewMember(e.target.value)}
+          onChange={e => {
+            const selectedId = e.target.value;
+            if (!selectedId) return
+            const selected = availableMembers.find(m => m.id === selectedId)
+            if (!selected || members.find(existing => existing.member_id === selected.id)) return
+            const isFirst = members.length === 0
+            setMembers(prev => [...prev, {
+              id: Date.now(),
+              member_id: selected.id,
+              name: selected.full_name,
+              is_leader: isFirst && type === "led"
+            }])
+            setNewMember("") // reset dropdown back to placeholder
+          }}
           style={inputStyle}>
           <option value="">Select a member</option>
           {availableMembers
@@ -958,7 +943,7 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
               </option>
             ))}
         </select>
-        <button
+        {/* <button
           onClick={addMember}
           style={{
             padding: '9px 16px',
@@ -972,7 +957,7 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
           }}
         >
           + Add
-        </button>
+        </button> */}
       </div>
 
       {members.length === 0 ? (
@@ -997,15 +982,15 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
                 padding: '10px 14px',
                 borderBottom:
                   i < members.length - 1 ? '1px solid #f0ece4' : 'none',
-                background: m.isLeader && type === 'led' ? '#f0f7f0' : '#fff',
+                background: m.is_leader && type === 'led' ? '#f0f7f0' : '#fff',
               }}
             >
               <span style={{ fontSize: 16 }}>
-                {type === 'led' && m.isLeader ? '👑' : '🧑'}
+                {type === 'led' && m.is_leader ? '👑' : '🧑'}
               </span>
               <span style={{ flex: 1, fontWeight: 600 }}>{m.name}</span>
               {type === 'led' &&
-                (m.isLeader ? (
+                (m.is_leader ? (
                   <span
                     style={{
                       fontSize: 11,
@@ -1099,6 +1084,7 @@ function GroupModal({ group, availableMembers = [], onClose, onSave }) {
 // ─── Group Detail Modal ────────────────────────────────────────────────────────
 function GroupDetailModal({ group, onClose, onEdit }) {
   const outstanding = group.checkouts || [];
+  const members = group.members || group.group_members || []  // add fallback
   const totalUnits = outstanding.reduce((a, c) => a + c.qty, 0);
 
   return (
@@ -1117,6 +1103,7 @@ function GroupDetailModal({ group, onClose, onEdit }) {
               margin: 0,
               fontFamily: "'Playfair Display',serif",
               fontSize: 22,
+              color: ACCENT,
             }}
           >
             {group.name}
@@ -1188,7 +1175,7 @@ function GroupDetailModal({ group, onClose, onEdit }) {
               fontFamily: "'Playfair Display',serif",
             }}
           >
-            {group.members.length}
+            {members.length}
           </div>
         </div>
         <div
@@ -1239,7 +1226,7 @@ function GroupDetailModal({ group, onClose, onEdit }) {
           marginBottom: 20,
         }}
       >
-        {group.members.length === 0 ? (
+        {members.length === 0 ? (
           <p
             style={{
               padding: '12px 16px',
@@ -1251,7 +1238,7 @@ function GroupDetailModal({ group, onClose, onEdit }) {
             No members.
           </p>
         ) : (
-          group.members.map((m, i) => (
+          members.map((m, i) => (
             <div
               key={m.id}
               style={{
@@ -1260,7 +1247,7 @@ function GroupDetailModal({ group, onClose, onEdit }) {
                 gap: 10,
                 padding: '10px 14px',
                 borderBottom:
-                  i < group.members.length - 1 ? '1px solid #f0ece4' : 'none',
+                  i < members.length - 1 ? '1px solid #f0ece4' : 'none',
               }}
             >
               <span>{group.type === 'led' && m.isLeader ? '👑' : '🧑'}</span>
@@ -1428,25 +1415,6 @@ function AddMemberModal({ onClose, onAdd, onEdit, member }) {
         </button>
       </div>
     </Overlay>
-  )
-}
-
-function QMSelect({ value, onChange, members, label = "Checked by (QM on duty)" }) {
-  const qmMembers = members.filter(m => 
-    ["quartermaster", "assistant_qm"].includes(m.role) && m.active
-  );
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
-        <option value="">Select a Quartermaster</option>
-        {qmMembers.map(m => (
-          <option key={m.id} value={m.full_name}>
-            {m.full_name}
-          </option>
-        ))}
-      </select>
-    </div>
   )
 }
 
@@ -1700,11 +1668,17 @@ export default function App() {
 
   // ── Group handlers ──
   const handleSaveGroup = async (data, editId) => {
-    const saved = await saveGroup({ ...data, id: editId || undefined })
+    const { id, checkouts, ...groupData } = data
+    const saved = await saveGroup({ 
+      ...groupData, 
+      id: editId || undefined })
     if (editId) {
-      setGroups(prev => prev.map(g => g.id === editId ? saved : g))
+      setGroups(prev => prev.map(g => g.id === editId 
+        ? { ...saved,
+          checkouts: g.checkouts || []
+      } : g))
     } else {
-      setGroups(prev => [...prev, { ...saved, checkouts: [] }])
+      setGroups(prev => [...prev, saved])
     }
   };
 
@@ -2423,7 +2397,8 @@ export default function App() {
               >
                 {groups.map((group) => {
                   const out = group.checkouts || [];
-                  const leader = group.members.find((m) => m.isLeader);
+                  const group_members = group.members;
+                  const leader = members.find((m) => m.is_leader);
                   return (
                     <div
                       key={group.id}
@@ -2494,7 +2469,7 @@ export default function App() {
                               fontSize: 20,
                             }}
                           >
-                            {group.members.length}
+                            {(group_members || []).length}
                           </div>
                           <div
                             style={{
