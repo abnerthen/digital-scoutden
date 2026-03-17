@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import Overlay from '../Overlay';
+import Overlay from '../elements/Overlay';
 import { labelStyle, inputStyle, btnBase, ACCENT, ACCENT2, DARK, modalTitleStyle, attnBoxStyle } from '../../constants';
-import { closeButton as CloseButton } from '../elements/buttons';
-import MemberSelect from '../MemberSelect';
-import QMSelect from '../QMSelect';
+import { CloseButton } from '../elements/buttons';
+import MemberSelect from '../elements/MemberSelect';
+import QMSelect from '../elements/QMSelect';
 
 export default function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
   console.log('CheckInModal openTransactions:', openTransactions)

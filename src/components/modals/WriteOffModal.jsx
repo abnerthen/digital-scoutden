@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import Overlay from '../Overlay';
+import Overlay from '../elements/Overlay';
 import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle, attnBoxStyle } from '../../constants';
-import { closeButton as CloseButton } from '../elements/buttons';
+import { CloseButton } from '../elements/buttons';
 
 export default function WriteOffModal({ item, onClose, onConfirm }) {
   const unitsOut = item.total_owned - item.quantity;

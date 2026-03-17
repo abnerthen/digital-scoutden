@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { labelStyle, inputStyle, btnBase, modalTitleStyle, attnBoxStyle } from '../../constants';
 // import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from '../../lib/items';
 
-import Overlay from '../Overlay';
+import Overlay from '../elements/Overlay';
 
 // ─── Remove Item Modal ─────────────────────────────────────────────────────────
 export default function RemoveItemModal({ item, onClose, onConfirm }) {

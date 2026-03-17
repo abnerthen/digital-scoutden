@@ -1,18 +1,18 @@
 import React from 'react';
-import { labelStyle, inputStyle } from '../constants';
+import { labelStyle, inputStyle } from '../../constants';
 
-export default function QMSelect({ value, onChange, members, label = "Requested by" }) {
+export default function QMSelect({ value, onChange, members, label = "Checked by (QM on duty)" }) {
   const qmMembers = members.filter(m => 
-    !(m.role === "scouter") && m.active
+    ["quartermaster", "assistant_qm"].includes(m.role) && m.active
   );
   return (
     <div>
       <label style={labelStyle}>{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
-        <option value="">Select a member</option>
+        <option value="">Select a Quartermaster</option>
         {qmMembers.map(m => (
           <option key={m.id} value={m.full_name}>
-            {m.full_name}{m.role != 'scout' ? ` (${m.role.replace('_', ' ')})` : ''}
+            {m.full_name}
           </option>
         ))}
       </select>

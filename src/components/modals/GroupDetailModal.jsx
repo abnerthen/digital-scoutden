@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DARK, ACCENT, btnBase, modalTitleStyle } from '../../constants';
-import Overlay from '../Overlay';
-import { closeButton as CloseButton } from '../elements/buttons';
+import Overlay from '../elements/Overlay';
+import { CloseButton } from '../elements/buttons';
 
 // ─── Group Detail Modal ────────────────────────────────────────────────────────
 export default function GroupDetailModal({ group, onClose, onEdit }) {

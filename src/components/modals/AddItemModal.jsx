@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { ACCENT, labelStyle, inputStyle, btnBase, modalTitleStyle } from '../../constants';
-import { closeButton as CloseButton } from '../elements/buttons';
+import { CloseButton } from '../elements/buttons';
 
-import Overlay from '../Overlay';
+import Overlay from '../elements/Overlay';
 
 // ─── Add Item Modal (new purchase) ────────────────────────────────────────────
 export default function AddItemModal({ onClose, onAdd, categories }) {

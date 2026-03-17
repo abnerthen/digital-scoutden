@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const closeButton = ({ onClick }) => (
+export const CloseButton = ({ onClick }) => (
   <button 
     onClick={ onClick } 
     style={{ 
