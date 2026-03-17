@@ -21,11 +21,14 @@ export async function addMember(member) {
 }
 
 export async function deactivateMember(id) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('members')
     .update({ active: false })
     .eq('id', id)
+    .select()
+    .single()
   if (error) throw error
+  return data
 }
 
 export async function updateMember(id, updates) {
