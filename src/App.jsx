@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, ROLES, labelStyle, inputStyle, headerBtnStyle } from './constants';
+import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
@@ -8,9 +8,6 @@ import { createCheckout, closeTransaction, getOpenTransactions } from './lib/tra
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
 import troop_logo from './assets/troop_logo.png';
-
-import Overlay from './components/elements/Overlay';
-import Badge from './components/elements/Badge';
 
 // import modals
 import WriteOffModal from './components/modals/WriteOffModal';
@@ -281,7 +278,7 @@ export default function App() {
 
   const handleRemoveCategory = async (id) => {
     if (window.confirm("Are you sure you want to delete this category? Items in this category will not be deleted but will be uncategorized.")) {
-      await handleDeleteCategory(id)
+      await deleteCategory(id)
       setCategories(prev => prev.filter(c => c.id !== id))
     }
   }
