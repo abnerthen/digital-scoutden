@@ -13,6 +13,20 @@ export async function getItems() {
   }))
 }
 
+export async function uploadItemImage(file, itemId) {
+  const ext = file.name.split('.').pop()
+  const path = `${itemId}.${ext}`
+  const { error } = await supabase.storage
+    .from('item-images')
+    .upload(path, file, { upsert: true })
+  if (error) throw error
+
+  const { data } = supabase.storage
+    .from('item-images')
+    .getPublicUrl(path)
+  return data.publicUrl
+}
+
 export async function addItem(item) {
   const { data, error } = await supabase
     .from('items')
@@ -43,20 +57,6 @@ export async function archiveItem(id, reason) {
   if (error) throw error
 }
 
-export async function uploadItemImage(file, itemId) {
-  // Implementation to upload item image
-  const ext = file.name.split('.').pop()
-  const path = `${itemId}.${ext}`
-  const { error } = await supabase.storage
-    .from('item-images')
-    .upload(path, file, {upsert: true})
-  if (error) throw error
-  
-  const { data } = supabase.storage
-    .from('item-images')
-    .getPublicUrl(path)
-  return data.publicUrl
-}
 
 export async function updateItem(id, updates) {
   const { error } = await supabase
