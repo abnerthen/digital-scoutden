@@ -85,8 +85,7 @@ export default function App() {
       qty: entry.qty,
       unit: entry.unit,
       requester_id: entry.requesterId || null,
-      returner_name: entry.returner || null,
-      checker_name: entry.checker || null,
+      checker_id: entry.checkerId || null,
       event: entry.event || null,
       notes: entry.notes || null,
 
@@ -160,15 +159,15 @@ export default function App() {
       itemName: item.name,
       qty,
       unit: item.unit,
-      returner: returner || null,
-      checker: checker || null,
+      requester_id: returner,
+      checker_id: checker ,
       event: isPendingDelivery ? 'Delivery received' : null,
       notes: isPendingDelivery ? remarks || null : `${condition}${remarks ? ' — ' + remarks : ''}`,
     })
     setModal(null)
   }
 
-  const handleWriteOff = async (item, { qty, reason }) => {
+  const handleWriteOff = async (item, { qty, checker, reason }) => {
     const newQuantity = item.quantity - qty;
     const newTotalOwned = item.total_owned - qty;
     await updateItemQuantity(item.id, newQuantity, newTotalOwned);
@@ -181,10 +180,12 @@ export default function App() {
     );
     await addLog({
       type: 'WRITEOFF',
+      itemId: item.id,
       itemName: item.name,
       qty,
       unit: item.unit,
-      scout: 'Quartermaster',
+      requester_id: checker,
+      checker_id: checker,
       notes: reason,
       event: 'Write-off',
     });

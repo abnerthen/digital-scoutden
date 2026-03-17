@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Overlay from '../elements/Overlay';
 import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle, attnBoxStyle } from '../../constants';
 import { CloseButton } from '../elements/buttons';
+import MemberSelect from '../elements/MemberSelect';
 
 export default function WriteOffModal({ item, onClose, onConfirm }) {
   const unitsOut = item.total_owned - item.quantity;
@@ -9,6 +10,7 @@ export default function WriteOffModal({ item, onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState("1");
   const [reason, setReason] = useState("");
+  const [checkerId, setCheckerId] = useState("");
 
   return (
     <Overlay>
@@ -62,6 +64,13 @@ export default function WriteOffModal({ item, onClose, onConfirm }) {
         <option>Stolen</option>
         <option>Other</option>
       </select>
+
+      <MemberSelect
+        value={checkerId} 
+        onChange={setCheckerId} 
+        members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))} 
+        label="Write off by (QM on duty)"
+      />
 
       <div style={
         { ...attnBoxStyle, 
