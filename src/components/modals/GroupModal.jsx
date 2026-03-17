@@ -96,33 +96,33 @@ export default function GroupModal({ group, availableMembers = [], onClose, onSa
       </div>
 
       <label style={{ ...labelStyle, marginTop: 18 }}>Members</label>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <select
-          value={newMember}
-          onChange={e => {
-            const selectedId = e.target.value;
-            if (!selectedId) return
-            const selected = availableMembers.find(m => m.id === selectedId)
-            if (!selected || members.find(existing => existing.member_id === selected.id)) return
-            const isFirst = members.length === 0
-            setMembers(prev => [...prev, {
-              id: Date.now(),
-              member_id: selected.id,
-              name: selected.full_name,
-              is_leader: isFirst && type === "led"
-            }])
-            setNewMember("") // reset dropdown back to placeholder
-          }}
-          style={inputStyle}>
-          <option value="">Select a member</option>
-          {availableMembers
-            .filter(m => !members.find(existing => existing.member_id === m.id))
-            .map(m => (
-              <option key={m.id} value={m.id}>
-                {m.full_name}{m.role != 'Scout' ? ` (${m.role})` : ""}
-              </option>
-            ))}
-        </select>
+
+      <div style={{ 
+        display: 'flex', 
+        gap: 8, 
+        marginBottom: 10 
+        }}>
+        <MemberSelect
+            value={newMember}
+            onChange={(selectedId) => {
+                if (!selectedId) return
+                const selected = availableMembers
+                    .find(m => m.id === selectedId);
+                if (!selected || members.find(existing => existing.member_id === selected.id)) return;
+                const isFirst = members.length === 0;
+                setMembers(prev => [...prev, {
+                    id: Date.now(),
+                    member_id: selected.id,
+                    name: selected.full_name,
+                    is_leader: isFirst && type === "led"
+                }
+                ]);
+                setNewMember("");
+            }}
+            members={availableMembers}
+            excludeIds={members.map(m => m.member_id)}
+            label=""
+        />
       </div>
 
       {members.length === 0 ? (
