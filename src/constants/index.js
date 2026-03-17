@@ -1,4 +1,5 @@
 import React from 'react';
+import React from 'react';
 
 export const ACCENT = '#2e7d32';
 export const ACCENT2 = '#ff8f00';
@@ -61,6 +62,17 @@ export const btnBase = {
   background: '#eee', 
   color: '#555' 
 };
+
+export const headerBtnStyle = {
+  padding: '8px 14px',
+  background: ACCENT,
+  color: '#fff',
+  border: 'none',
+  borderRadius: 8,
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontSize: 13,
+}
 
 export const modalTitleStyle = { 
   margin: 0, 

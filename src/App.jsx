@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, ROLES, labelStyle, inputStyle, modalTitleStyle, attnBoxStyle } from './constants';
+import { BG, DARK, ACCENT, ACCENT2, ROLES, labelStyle, inputStyle, headerBtnStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
@@ -413,45 +413,20 @@ export default function App() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => setModal({ type: 'addItem' })}
-            style={{
-              padding: '8px 14px',
-              background: ACCENT,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontSize: 13,
-            }}
+            style={headerBtnStyle}
           >
             ＋ Item
           </button>
           <button
             onClick={() => setModal({ type: 'newGroup' })}
-            style={{
-              padding: '8px 14px',
-              background: '#455a64',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontSize: 13,
-            }}
-          >
+            style={{ ...headerBtnStyle,
+              background: '#455a64'}}>
             👥 Group
           </button>
           <button
             onClick={() => signOut()}
-            style={{ 
-              padding: '8px 14px', 
-              background: '#ff0000', 
-              color: '#fff', 
-              border: 'none', 
-              borderRadius: 8, 
-              fontWeight: 700, 
-              cursor: 'pointer', 
-              fontSize: 13 }}>
+            style={{ ...headerBtnStyle,
+              background: '#ff0000'}}>
             SIGN OUT
           </button>
         </div>
