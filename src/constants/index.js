@@ -1,3 +1,5 @@
+import React from 'react';
+
 export const ACCENT = '#2e7d32';
 export const ACCENT2 = '#ff8f00';
 export const BG = '#f5f0e8';

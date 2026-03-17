@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DARK, ACCENT, btnBase, modalTitleStyle } from '../../constants';
 import Overlay from '../Overlay';
+import { closeButton as CloseButton } from '../elements/buttons';
 
 // ─── Group Detail Modal ────────────────────────────────────────────────────────
 export default function GroupDetailModal({ group, onClose, onEdit }) {
@@ -39,18 +40,7 @@ export default function GroupDetailModal({ group, onClose, onEdit }) {
           >
             ✎ Edit
           </button>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: 22,
-              cursor: 'pointer',
-              color: '#888',
-            }}
-          >
-            ✕
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
       </div>
 

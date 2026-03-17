@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { ACCENT, labelStyle, inputStyle, btnBase, modalTitleStyle } from '../../constants';
+import { closeButton as CloseButton } from '../elements/buttons';
 
 import Overlay from '../Overlay';
 
@@ -39,18 +40,7 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
         >
           🛒 New Purchase
         </h2>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: 22,
-            cursor: 'pointer',
-            color: '#888',
-          }}
-        >
-          ✕
-        </button>
+        <CloseButton onClick={onClose} />
       </div>
       <p
         style={{

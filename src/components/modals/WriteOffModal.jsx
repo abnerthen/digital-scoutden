@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Overlay from '../Overlay';
 import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle, attnBoxStyle } from '../../constants';
+import { closeButton as CloseButton } from '../elements/buttons';
 
 export default function WriteOffModal({ item, onClose, onConfirm }) {
   const unitsOut = item.total_owned - item.quantity;
@@ -13,7 +14,7 @@ export default function WriteOffModal({ item, onClose, onConfirm }) {
     <Overlay>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <h2 style={{ ...modalTitleStyle, color: "#c62828" }}>✕ Write Off Units</h2>
-        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>✕</button>
+        <CloseButton onClick={onClose} />
       </div>
 
       <p style={{ color: "#555", marginBottom: 16, lineHeight: 1.5, fontSize: 14 }}>
