@@ -18,9 +18,9 @@ export default function MemberSelect({
         style={inputStyle}>
         <option value="">Select a member</option>
         {availableMembers.map(m => (
-          <option key={m.id} value={m.full_name}>
+          <option key={m.id} value={m.id}>
             {m.full_name}
-            {m.role != 'scout' ? ` (${m.role.replace('_', ' ')})` : ''}
+            {m.role != 'scout' ? ` (${m.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())})` : ''}
           </option>
         ))}
       </select>

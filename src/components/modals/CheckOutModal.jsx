@@ -32,8 +32,8 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState("1");
   const [groupId, setGroupId] = useState("");
-  const [requester, setRequester] = useState("");
-  const [checker, setChecker] = useState("");
+  const [requesterId, setRequesterId] = useState("");
+  const [checkerId, setCheckerId] = useState("");
   const [event, setEvent] = useState("");
   const [remarks, setRemarks] = useState("");
   const max = item.quantity;
@@ -64,14 +64,14 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <MemberSelect
-          value={requester}
-          onChange={setRequester}
+          value={requesterId}
+          onChange={setRequesterId}
           members={members}
         />
-        <QMSelect
-          value={checker}
-          onChange={setChecker}
-          members={members}
+        <MemberSelect
+          value={checkerId}
+          onChange={setCheckerId}
+          members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))}
         />
       </div>
 
@@ -136,20 +136,20 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
             background: "#eee", 
             color: "#555" }}>Cancel</button>
         <button
-          disabled={!requester.trim() || !checker.trim()}
+          disabled={!requesterId || !checkerId}
           onClick={() => onConfirm({ 
             qty, 
             groupId, 
-            groupName: selectedGroup?.name || requester, 
-            requester, 
-            checker, 
+            groupName: selectedGroup?.name || requesterId, 
+            requesterId, 
+            checkerId, 
             event, 
             remarks })}
           style={{ ...btnBase, 
             flex: 2, 
-            background: requester.trim() && checker.trim() ? ACCENT2 : "#eee", 
-            color: requester.trim() && checker.trim() ? "#fff" : "#aaa", 
-            cursor: requester.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+            background: requesterId && checkerId ? ACCENT2 : "#eee", 
+            color: requesterId && checkerId ? "#fff" : "#aaa", 
+            cursor: requesterId && checkerId ? "pointer" : "not-allowed" }}>
           Confirm Check Out
         </button>
       </div>
