@@ -1102,8 +1102,10 @@ export default function App() {
   }
 
   const handleRemoveCategory = async (id) => {
-    await deleteCategory(id)
-    setCategories(prev => prev.filter(c => c.id !== id))
+    if (window.confirm("Are you sure you want to delete this category? Items in this category will not be deleted but will be uncategorized.")) {
+      await handleDeleteCategory(id)
+      setCategories(prev => prev.filter(c => c.id !== id))
+    }
   }
 
   // ── Group handlers ──
@@ -2361,7 +2363,7 @@ export default function App() {
                   </div>
                   {!cat.protected && (
                     <button
-                      onClick={() => handleDeleteCategory(cat.id)}
+                      onClick={() => handleRemoveCategory(cat.id)}
                       style={{ 
                         padding: "5px 12px", 
                         background: "#fce4ec", 
