@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, ROLES, labelStyle, inputStyle, btnBase, modalTitleStyle } from './constants';
+import { BG, DARK, ACCENT, ACCENT2, ROLES, labelStyle, inputStyle, btnBase, modalTitleStyle, attnBoxStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
@@ -52,7 +52,7 @@ function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
         </div>
       </div>
 
-      <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#7a5800" }}>
+      <div style={attnBoxStyle}>
         Both <strong>Requester</strong> and <strong>Checker</strong> must be filled for every checkout.
       </div>
 
@@ -261,7 +261,9 @@ function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
             ))}
           </div>
 
-          <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "8px 0", fontSize: 13, color: "#7a5800" }}>
+          <div style={{ 
+            ...attnBoxStyle, 
+            margin: "8px 0" }}>
             Both <strong>Returner</strong> and <strong>Checker</strong> must be filled for every return.
           </div>
 

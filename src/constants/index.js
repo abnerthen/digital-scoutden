@@ -25,6 +25,16 @@ export const labelStyle = {
   letterSpacing: 0.8,
 };
 
+export const attnBoxStyle = { 
+  background: "#fff8e1", 
+  border: "1px solid #ffe082", 
+  borderRadius: 8, 
+  padding: "10px 14px", 
+  marginBottom: 12, 
+  fontSize: 13, 
+  color: "#7a5800" 
+};
+
 export const inputStyle = {
   width: '100%',
   boxSizing: 'border-box',

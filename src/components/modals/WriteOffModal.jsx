@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Overlay from '../Overlay';
-import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle } from '../../constants';
+import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle, attnBoxStyle } from '../../constants';
 
 export default function WriteOffModal({ item, onClose, onConfirm }) {
   const unitsOut = item.total_owned - item.quantity;
@@ -62,7 +62,10 @@ export default function WriteOffModal({ item, onClose, onConfirm }) {
         <option>Other</option>
       </select>
 
-      <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, padding: "10px 14px", margin: "14px 0", fontSize: 13, color: "#7a5800" }}>
+      <div style={
+        { ...attnBoxStyle, 
+          margin: "14px 0",
+        }}>
         {maxWriteOff === 0
           ? "⚠️ All units are currently checked out. Ask scouts to return items before writing off."
           : <>⚠️ In-store stock will go from <strong>{item.quantity}</strong> → <strong>{item.quantity - qty}</strong>. Total owned from <strong>{item.total_owned}</strong> → <strong>{item.total_owned - qty}</strong>. This cannot be undone.</>

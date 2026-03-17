@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { labelStyle, inputStyle, btnBase } from '../../constants';
+import { labelStyle, inputStyle, btnBase, modalTitleStyle, attnBoxStyle } from '../../constants';
 // import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from '../../lib/items';
 
 import Overlay from '../Overlay';
@@ -10,10 +10,8 @@ export default function RemoveItemModal({ item, onClose, onConfirm }) {
   return (
     <Overlay>
       <h2
-        style={{
+        style={{...modalTitleStyle,
           margin: '0 0 8px',
-          fontFamily: "'Playfair Display',serif",
-          fontSize: 20,
           color: '#c62828',
         }}
       >
@@ -45,13 +43,8 @@ export default function RemoveItemModal({ item, onClose, onConfirm }) {
       </select>
       <div
         style={{
-          background: '#fff8e1',
-          border: '1px solid #ffe082',
-          borderRadius: 8,
-          padding: '10px 14px',
+          ...attnBoxStyle,
           margin: '14px 0',
-          fontSize: 13,
-          color: '#7a5800',
         }}
       >
         ⚠️ This removes the item from active inventory. Log history is kept.
