@@ -17,4 +17,6 @@ If you are developing a production application, we recommend using TypeScript wi
 
 ## TODO
 
-- For Check-In function, allow the requester to also be the returner
+- [] For Check-In function, allow the requester to also be the returner
+- [] Create ItemView to allow for viewing images.
+
