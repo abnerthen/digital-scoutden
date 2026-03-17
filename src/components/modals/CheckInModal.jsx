@@ -130,7 +130,7 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
           <textarea rows={2} placeholder="Delivery notes, supplier reference…" value={remarks} onChange={e => setRemarks(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
 
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+            <button onClick={onClose} style={btnBase}>Cancel</button>
             <button
               disabled={!returnerId || !checkerId}
               onClick={() => onConfirm({ 
@@ -211,7 +211,7 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
           <textarea rows={2} placeholder="e.g. Zip broken on return, compass glass cracked…" value={remarks} onChange={e => setRemarks(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
 
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+            <button onClick={onClose} style={btnBase}>Cancel</button>
             <button
               disabled={!returnerId || !checkerId || !selectedTxId}
               onClick={() => onConfirm({ 

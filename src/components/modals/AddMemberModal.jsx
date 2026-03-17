@@ -67,7 +67,7 @@ export default function AddMemberModal({ onClose, onAdd, onEdit, member }) {
         </>
       )}
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-        <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+        <button onClick={onClose} style={btnBase}>Cancel</button>
         <button
           disabled={!isEdit && !fullName.trim() && !email.trim()}
           onClick={handleSubmit}

@@ -57,6 +57,9 @@ export const btnBase = {
   fontSize: 15,
   cursor: 'pointer',
   padding: '11px 0',
+  flex: 1, 
+  background: '#eee', 
+  color: '#555' 
 };
 
 export const modalTitleStyle = { 

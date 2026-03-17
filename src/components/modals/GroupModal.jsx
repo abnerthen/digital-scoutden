@@ -219,7 +219,7 @@ export default function GroupModal({ group, availableMembers = [], onClose, onSa
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
         <button
           onClick={onClose}
-          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
+          style={btnBase}
         >
           Cancel
         </button>

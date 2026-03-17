@@ -83,7 +83,7 @@ export default function WriteOffModal({ item, onClose, onConfirm }) {
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
+        <button onClick={onClose} style={btnBase}>Cancel</button>
         <button
           disabled={!reason || maxWriteOff === 0}
           onClick={() => onConfirm({ qty, reason })}

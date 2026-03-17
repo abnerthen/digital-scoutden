@@ -131,11 +131,7 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
         style={{ ...inputStyle, resize: "vertical" }} />
 
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-        <button onClick={onClose} style={{ 
-            ...btnBase, 
-            flex: 1, 
-            background: "#eee", 
-            color: "#555" }}>Cancel</button>
+        <button onClick={onClose} style={btnBase}>Cancel</button>
         <button
           disabled={!requesterId || !checkerId}
           onClick={() => onConfirm({ 
