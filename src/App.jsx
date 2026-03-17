@@ -18,6 +18,7 @@ import MemberSelect from './components/MemberSelect';
 import WriteOffModal from './components/modals/WriteOffModal';
 import GroupDetailModal from './components/modals/GroupDetailModal';
 import AddItemModal from './components/modals/AddItemModal';
+import RemoveItemModal from './components/modals/RemoveItemModal'
 
 // ─── Check-out Modal ──────────────────────────────────────────────────────────
 function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
@@ -496,83 +497,6 @@ function BuyMoreModal({ item, onClose, onConfirm }) {
           style={{ ...btnBase, flex: 2, background: ACCENT, color: '#fff' }}
         >
           Confirm Purchase
-        </button>
-      </div>
-    </Overlay>
-  );
-}
-
-// ─── Remove Item Modal ─────────────────────────────────────────────────────────
-function RemoveItemModal({ item, onClose, onConfirm }) {
-  const [reason, setReason] = useState('');
-  return (
-    <Overlay>
-      <h2
-        style={{
-          margin: '0 0 8px',
-          fontFamily: "'Playfair Display',serif",
-          fontSize: 20,
-          color: '#c62828',
-        }}
-      >
-        🗑️ Archive Item
-      </h2>
-      <p
-        style={{
-          color: '#555',
-          marginBottom: 16,
-          lineHeight: 1.5,
-          fontSize: 14,
-        }}
-      >
-        <strong>{item.name}</strong> will be archived. All past log entries are
-        preserved.
-      </p>
-      <label style={labelStyle}>Reason</label>
-      <select
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        style={inputStyle}
-      >
-        <option value="">Select a reason…</option>
-        <option>Lost</option>
-        <option>Damaged beyond repair</option>
-        <option>Disposed / Written off</option>
-        <option>Transferred to another troop</option>
-        <option>Other</option>
-      </select>
-      <div
-        style={{
-          background: '#fff8e1',
-          border: '1px solid #ffe082',
-          borderRadius: 8,
-          padding: '10px 14px',
-          margin: '14px 0',
-          fontSize: 13,
-          color: '#7a5800',
-        }}
-      >
-        ⚠️ This removes the item from active inventory. Log history is kept.
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={onClose}
-          style={{ ...btnBase, flex: 1, background: '#eee', color: '#555' }}
-        >
-          Cancel
-        </button>
-        <button
-          disabled={!reason}
-          onClick={() => onConfirm(reason)}
-          style={{
-            ...btnBase,
-            flex: 2,
-            background: reason ? '#c62828' : '#eee',
-            color: reason ? '#fff' : '#aaa',
-            cursor: reason ? 'pointer' : 'not-allowed',
-          }}
-        >
-          Archive Item
         </button>
       </div>
     </Overlay>
