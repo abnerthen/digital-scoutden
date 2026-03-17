@@ -20,7 +20,7 @@ export default function MemberSelect({
         {availableMembers.map(m => (
           <option key={m.id} value={m.id}>
             {m.full_name}
-            {m.role != 'scout' ? ` (${m.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())})` : ''}
+            {m.role != 'scout' ? ` (${m.role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')})` : ''}
           </option>
         ))}
       </select>

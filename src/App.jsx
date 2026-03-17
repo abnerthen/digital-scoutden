@@ -23,6 +23,8 @@ import BuyMoreModal from './components/modals/BuyMoreModal';
 import GroupModal from './components/modals/GroupModal';
 import AddMemberModal from './components/modals/AddMemberModal';
 
+import LogTab from './components/tabs/LogTab';
+
 // ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [items, setItems] = useState([]);
@@ -82,7 +84,7 @@ export default function App() {
       item_name: entry.itemName,
       qty: entry.qty,
       unit: entry.unit,
-      requester_name: entry.requester || null,
+      requester_id: entry.requesterId || null,
       returner_name: entry.returner || null,
       checker_name: entry.checker || null,
       event: entry.event || null,
@@ -100,8 +102,8 @@ export default function App() {
       item_id: item.id,
       group_id: groupId || null,
       qty,
-      requester_name: requester,
-      checkout_checker_name: checker,
+      requester_id: requester,
+      checkout_checker_id: checker,
       event: event || null,
       checkout_remarks: remarks || null,
       checked_out_at: new Date(),
@@ -1338,140 +1340,7 @@ export default function App() {
       )}
 
         {/* ── LOG TAB ── */}
-        {activeTab === 'log' && (
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 14,
-              border: '1px solid #e8e0d4',
-              overflow: 'hidden',
-            }}
-          >
-            {log.length === 0 ? (
-              <p
-                style={{
-                  textAlign: 'center',
-                  color: '#bbb',
-                  padding: 48,
-                  fontStyle: 'italic',
-                }}
-              >
-                No movements recorded yet.
-              </p>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr
-                      style={{
-                        background: '#f5f0e8',
-                        borderBottom: '2px solid #e0d8cc',
-                      }}
-                    >
-                      {[
-                        'Time',
-                        'Type',
-                        'Item',
-                        'Qty',
-                        'Scout / Group',
-                        'Event',
-                        'Notes',
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          style={{
-                            padding: '11px 13px',
-                            textAlign: 'left',
-                            fontSize: 11,
-                            textTransform: 'uppercase',
-                            letterSpacing: 0.7,
-                            color: '#888',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {log.map((entry, i) => (
-                      <tr
-                        key={entry.id}
-                        style={{
-                          borderBottom: '1px solid #f0ece4',
-                          background: i % 2 === 0 ? '#fff' : '#fdfaf6',
-                        }}
-                      >
-                        <td
-                          style={{
-                            padding: '10px 13px',
-                            fontSize: 12,
-                            color: '#888',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {new Date(entry.created_at).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                          <br />
-                          <span style={{ fontSize: 11 }}>
-                            {new Date(entry.created_at).toLocaleDateString()}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 13px' }}>
-                          <Badge type={entry.type} />
-                        </td>
-                        <td
-                          style={{
-                            padding: '10px 13px',
-                            fontWeight: 600,
-                            fontFamily: "'Playfair Display',serif",
-                          }}
-                        >
-                          {entry.item_name}
-                        </td>
-                        <td style={{ padding: '10px 13px', fontWeight: 700 }}>
-                          {entry.qty} {entry.unit}
-                        </td>
-                        <td
-                          style={{
-                            padding: '10px 13px',
-                            fontSize: 13,
-                            color: '#555',
-                          }}
-                        >
-                          {entry.scout || '—'}
-                        </td>
-                        <td
-                          style={{
-                            padding: '10px 13px',
-                            fontSize: 13,
-                            color: '#555',
-                          }}
-                        >
-                          {entry.event || '—'}
-                        </td>
-                        <td
-                          style={{
-                            padding: '10px 13px',
-                            fontSize: 12,
-                            color: '#888',
-                            maxWidth: 160,
-                          }}
-                        >
-                          {entry.notes || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+        {activeTab === 'log' && <LogTab log={log} />}
 
         {/* -- CATEGORIES TAB -- */}
         {activeTab === "categories" && (

@@ -72,6 +72,7 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
           value={checkerId}
           onChange={setCheckerId}
           members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))}
+          label="Checked by (QM on duty)"
         />
       </div>
 

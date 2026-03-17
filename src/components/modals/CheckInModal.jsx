@@ -102,12 +102,17 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <MemberSelect
-              value={returner}
-              onChange={setReturner}
-              members={members.filter(m => m.active && !["scouter", "scout"].includes(m.role))}
+              value={returnerId}
+              onChange={setReturnerId}
+              members={members.filter(m => m.active && m.role != 'scout')}
               label='Received By (Committee Member)'
             />
-            <QMSelect value={checker} onChange={setChecker} members={members} />
+            <MemberSelect 
+              value={checkerId} 
+              onChange={setCheckerId} 
+              members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))} 
+              label="Checked by (QM on duty)"
+              />
           </div>
 
           <label style={labelStyle}>Remarks</label>
