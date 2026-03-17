@@ -1,5 +1,4 @@
 import React from 'react';
-import React from 'react';
 
 export const ACCENT = '#2e7d32';
 export const ACCENT2 = '#ff8f00';
