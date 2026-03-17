@@ -3,9 +3,10 @@ import { ACCENT, labelStyle, inputStyle, btnBase, modalTitleStyle } from '../../
 import { CloseButton } from '../elements/buttons';
 
 import Overlay from '../elements/Overlay';
+import QMSelect from '../elements/QMSelect';
 
 // ─── Add Item Modal (new purchase) ────────────────────────────────────────────
-export default function AddItemModal({ onClose, onAdd, categories }) {
+export default function AddItemModal({ onClose, onAdd, categories, members }) {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [qty, setQty] = useState(1);
@@ -14,6 +15,7 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
   const [notes, setNotes] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [checkerId, setCheckerId] = useState("");
   const fileInputRef = useRef();
 
   const handleFileChange = (e) => {
@@ -61,6 +63,8 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
         onChange={(e) => setName(e.target.value)}
         style={inputStyle}
       />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
       <label style={labelStyle}>Category</label>
       <select
         value={categoryId}
@@ -69,6 +73,14 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
       >
         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
+      </div>
+      <QMSelect
+        value={checkerId}
+        onChange={setCheckerId}
+        members={members} 
+        label="Checked by (QM on duty)"
+        />
+      </div>
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <label style={labelStyle}>Quantity Purchased</label>
@@ -133,6 +145,7 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
                     categoryId,
                     quantity: qty,
                     unit,
+                    checkerId,
                     notes,
                     imageFile,
                 });
