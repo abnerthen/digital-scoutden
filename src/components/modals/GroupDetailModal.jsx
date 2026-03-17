@@ -36,6 +36,7 @@ export default function GroupDetailModal({ group, onClose, onEdit }) {
               ...btnBase,
               padding: '10px 16px',
               background: ACCENT,
+              color: '#fff',
             }}
           >
             ✎ Edit
