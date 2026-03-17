@@ -24,18 +24,6 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = () => {
-    onAdd({
-      name,
-      categoryId,
-      qty,
-      unit,
-      notes,
-      imageFile,
-    });
-    onClose();
-  };
-
   return (
     <Overlay>
       <div
@@ -147,7 +135,20 @@ export default function AddItemModal({ onClose, onAdd, categories }) {
         </button>
         <button
           disabled={!name.trim()}
-          onClick={handleSubmit}
+          onClick={() => {
+            if (name.trim()) {
+                console.log('adding item:', { name, categoryId, qty, unit, notes, imageFile });
+                onAdd({
+                    name,
+                    categoryId,
+                    quantity: qty,
+                    unit,
+                    notes,
+                    imageFile,
+                });
+                onClose();
+            }
+          }}
           style={{
             ...btnBase,
             flex: 2,
