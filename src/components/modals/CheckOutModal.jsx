@@ -140,10 +140,10 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
           disabled={!requesterId || !checkerId}
           onClick={() => onConfirm({ 
             qty, 
-            groupId, 
-            groupName: selectedGroup?.name || requesterId, 
-            requesterId, 
-            checkerId, 
+            groupId: groupId, 
+            group_name: selectedGroup?.name || requesterId, 
+            requester: requesterId, 
+            checker: checkerId, 
             event, 
             remarks })}
           style={{ ...btnBase, 

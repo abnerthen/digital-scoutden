@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Overlay from '../elements/Overlay';
 import { labelStyle, inputStyle, btnBase, ACCENT, ACCENT2, DARK, modalTitleStyle, attnBoxStyle } from '../../constants';
 import { CloseButton } from '../elements/buttons';
 import MemberSelect from '../elements/MemberSelect';
 import QMSelect from '../elements/QMSelect';
+import { getMemberById } from '../../lib/members';
 
 export default function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
   console.log('CheckInModal openTransactions:', openTransactions)
@@ -23,6 +24,16 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
   const [mode, setMode] = useState(openTransactions.length > 0 ? "return" : "delivery");
   const isPendingDelivery = mode === "delivery";
   const selectedTx = openTransactions.find(t => t.id === selectedTxId);
+  const [requesterName, setRequesterName] = useState("");
+
+  useEffect(() => {
+    async function fetchData() {if (selectedTx?.requester_id) {
+      await getMemberById(selectedTx.requester_id)
+        .then(member => setRequesterName(member.full_name))
+        .catch(err => console.error(`Failed to fetch requester name for ID ${selectedTx.requester_id}:`, err));
+    }};
+    fetchData();
+  }, [selectedTx?.requester_id]);
 
   return (
     <Overlay wide>
@@ -141,7 +152,7 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
                 style={{ border: `2px solid ${selectedTxId === tx.id ? ACCENT : "#ddd"}`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", background: selectedTxId === tx.id ? "#f0f7f0" : "#fafafa" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <strong>{tx.requester_name}</strong>
+                    <strong>{requesterName}</strong>
                     {tx.event && <span style={{ color: "#888", fontSize: 12 }}> · {tx.event}</span>}
                   </div>
                   <span style={{ fontWeight: 700, color: ACCENT2 }}>{tx.qty} {item.unit}</span>

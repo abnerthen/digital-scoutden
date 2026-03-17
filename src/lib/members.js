@@ -12,9 +12,19 @@ export async function getMembers() {
 
 export async function addMember(member) {
   const { data, error } = await supabase
+  .from('members')
+  .insert(member)
+  .select()
+  .single()
+  if (error) throw error
+  return data
+}
+
+export async function getMemberById(id) {
+  const { data, error } = await supabase
     .from('members')
-    .insert(member)
-    .select()
+    .select('*')
+    .eq('id', id)
     .single()
   if (error) throw error
   return data

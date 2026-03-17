@@ -130,8 +130,8 @@ export default function App() {
       itemName: item.name,
       qty,
       unit: item.unit,
-      requester: requester || null,
-      checker: checker || null,
+      requester_id: requester || null,
+      checker_id: checker || null,
       event: event || null,
       notes: remarks || null,
     })
