@@ -17,8 +17,8 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
   const [qty, setQty] = useState(pendingUnits);
   const [qtyDisplay, setQtyDisplay] = useState(String(pendingUnits));
   const [selectedTxId, setSelectedTxId] = useState(openTransactions[0]?.id || "");
-  const [returner, setReturner] = useState("");
-  const [checker, setChecker] = useState("");
+  const [returnerId, setReturnerId] = useState("");
+  const [checkerId, setCheckerId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [condition, setCondition] = useState("Good");
   const [mode, setMode] = useState(openTransactions.length > 0 ? "return" : "delivery");
@@ -132,9 +132,18 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
             <button
-              disabled={!returner.trim() || !checker.trim()}
-              onClick={() => onConfirm({ txId: null, qty, groupId: null, groupName: null, returner, checker, condition: "Good", remarks, isPendingDelivery: true })}
-              style={{ ...btnBase, flex: 2, background: returner.trim() && checker.trim() ? ACCENT : "#eee", color: returner.trim() && checker.trim() ? "#fff" : "#aaa", cursor: returner.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+              disabled={!returnerId || !checkerId}
+              onClick={() => onConfirm({ 
+                txId: null, 
+                qty, 
+                groupId: null, 
+                groupName: null, 
+                returnerId, 
+                checkerId, 
+                condition: "Good", 
+                remarks, 
+                isPendingDelivery: true })}
+              style={{ ...btnBase, flex: 2, background: returnerId && checkerId ? ACCENT : "#eee", color: returnerId && checkerId ? "#fff" : "#aaa", cursor: returnerId && checkerId ? "pointer" : "not-allowed" }}>
               Receive {qty} {item.unit}
             </button>
           </div>
@@ -173,12 +182,16 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <MemberSelect
-              value={returner}
-              onChange={setReturner}
-              members={members.filter(m => m.active && (!["scouter", "scout"].includes(m.role)))}
+              value={returnerId}
+              onChange={setReturnerId}
+              members={members}
               label='Returned By*'
             />
-            <QMSelect value={checker} onChange={setChecker} members={members} />
+            <QMSelect 
+            value={checkerId} 
+              onChange={setCheckerId} 
+              members={members} 
+              label='Checked By*' />
           </div>
 
           <label style={labelStyle}>Condition on Return</label>
@@ -200,9 +213,22 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <button onClick={onClose} style={{ ...btnBase, flex: 1, background: "#eee", color: "#555" }}>Cancel</button>
             <button
-              disabled={!returner.trim() || !checker.trim() || !selectedTxId}
-              onClick={() => onConfirm({ txId: selectedTxId, qty: selectedTx?.qty || 1, groupId: selectedTx?.group_id, groupName: selectedTx?.group_id, returner, checker, condition, remarks, isPendingDelivery: false })}
-              style={{ ...btnBase, flex: 2, background: returner.trim() && checker.trim() ? ACCENT : "#eee", color: returner.trim() && checker.trim() ? "#fff" : "#aaa", cursor: returner.trim() && checker.trim() ? "pointer" : "not-allowed" }}>
+              disabled={!returnerId || !checkerId || !selectedTxId}
+              onClick={() => onConfirm({ 
+                txId: selectedTxId, 
+                qty: selectedTx?.qty || 1, 
+                groupId: selectedTx?.group_id, 
+                groupName: selectedTx?.group_id, 
+                returnerId, 
+                checkerId, 
+                condition, 
+                remarks, 
+                isPendingDelivery: false })}
+              style={{ ...btnBase, 
+                flex: 2, 
+                background: returnerId && checkerId ? ACCENT : "#eee", 
+                color: returnerId && checkerId ? "#fff" : "#aaa", 
+                cursor: returnerId && checkerId ? "pointer" : "not-allowed" }}>
               Confirm Return
             </button>
           </div>

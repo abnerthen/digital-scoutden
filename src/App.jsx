@@ -142,8 +142,8 @@ export default function App() {
 
     if (!isPendingDelivery && txId) {
       await closeTransaction(txId, {
-        returner_name: returner,
-        return_checker_name: checker,
+        returner_id: returner,
+        return_checker_id: checker,
         condition,
         return_remarks: remarks || null,
       })

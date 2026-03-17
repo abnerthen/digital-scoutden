@@ -1,5 +1,9 @@
 import React from 'react';
-import { labelStyle, inputStyle } from '../../constants';
+import { labelStyle, inputStyle, ROLES } from '../../constants';
+
+const ROLE_LABELS = Object.fromEntries(
+  ROLES.map(role => [role.value, role.label])
+);
 
 export default function MemberSelect({ 
   value, onChange, 
@@ -20,7 +24,7 @@ export default function MemberSelect({
         {availableMembers.map(m => (
           <option key={m.id} value={m.id}>
             {m.full_name}
-            {m.role != 'scout' ? ` (${m.role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')})` : ''}
+            {m.role != 'scout' ? ` (${ROLE_LABELS[m.role]})` : ''}
           </option>
         ))}
       </select>
