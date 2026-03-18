@@ -87,12 +87,16 @@ h2 {
 }
 
 h1 {
-  font-size: 56px;
+  font-size: 36px;
   letter-spacing: -1.68px;
   margin: 32px 0;
   @media (max-width: 1024px) {
     font-size: 36px;
     margin: 20px 0;
+  }
+  @media (max-width: 600px) {
+    font-size: 20px;
+    margin: 16px 0;
   }
 }
 h2 {
@@ -106,6 +110,39 @@ h2 {
 }
 p {
   margin: 0;
+}
+
+img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  @media (max-width: 800px) {
+    width: 40px;
+    height: 40px;
+  }
+  @media (max-width: 400px) {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.stats-container {
+  display: flex;
+  gap: 28px;
+  padding: 20px 28px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* 👇 switch to grid on smaller screens */
+@media (max-width: 650px) {
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    text-align: center;
+  }
 }
 
 code,

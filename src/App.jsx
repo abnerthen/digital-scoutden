@@ -379,31 +379,19 @@ export default function App() {
             padding: '14px 0',
           }}
         >
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img 
             src={troop_logo}
             alt="Troop Logo"
-            style={{ width: 40, height: 40, objectFit: 'contain'}}
+            // style={{ width: 80, height: 80, objectFit: 'contain'}}
           />
-          <div>
             <h1
-              style={{...modalTitleStyle, color:"#fff", align: 'center'}}
+              style={{ fontFamily: "'Playfair Display',serif", color:"#fff", align: 'center', paddingTop: 4}}
             >
               Storeroom Ledger
             </h1>
           </div>
-          {/* <div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 11,
-                color: '#aaa',
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-              }}
-            >
-              Scout Quartermaster System
-            </p>
-          </div> */}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -429,14 +417,7 @@ export default function App() {
 
       {/* STATS */}
       <div
-        style={{
-          background: '#fff',
-          borderBottom: '1px solid #e0e0e0',
-          padding: '10px 28px',
-          display: 'flex',
-          gap: 28,
-          flexWrap: 'wrap',
-        }}
+        className="stats-container"
       >
         {[
           { label: 'Active Items', val: activeItems.length, icon: '📦' },
