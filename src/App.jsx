@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle } from './constants';
+import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle, modalTitleStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
@@ -364,7 +364,7 @@ export default function App() {
         style={{
           background: DARK,
           color: '#fff',
-          padding: '0 24px',
+          padding: '0 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -374,7 +374,7 @@ export default function App() {
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'left',
             gap: 14,
             padding: '14px 0',
           }}
@@ -386,15 +386,12 @@ export default function App() {
           />
           <div>
             <h1
-              style={{
-                margin: 0,
-                fontFamily: "'Playfair Display',serif",
-                fontSize: 21,
-                letterSpacing: 0.5,
-              }}
+              style={{...modalTitleStyle, color:"#fff", align: 'center'}}
             >
               Storeroom Ledger
             </h1>
+          </div>
+          {/* <div>
             <p
               style={{
                 margin: 0,
@@ -406,7 +403,7 @@ export default function App() {
             >
               Scout Quartermaster System
             </p>
-          </div>
+          </div> */}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -489,7 +486,6 @@ export default function App() {
       <div
         style={{
           display: 'flex',
-          padding: '0 28px',
           background: '#fff',
           borderBottom: '1px solid #e0e0e0',
         }}
@@ -499,7 +495,7 @@ export default function App() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: '12px 22px',
+              padding: '4px 4px',
               border: 'none',
               background: 'none',
               fontWeight: 700,

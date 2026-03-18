@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { signIn } from '../lib/auth'
+import { modalTitleStyle } from '../constants'
+import troop_logo from '../assets/troop_logo.png'
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -23,8 +25,13 @@ export default function LoginPage({ onLogin }) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f0e8', fontFamily: 'serif' }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: 40, width: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 40 }}>⚜️</div>
-          <h1 style={{ margin: '8px 0 4px', fontFamily: 'Playfair Display, serif', fontSize: 22 }}>Storeroom Ledger</h1>
+          {/* <div style={{ fontSize: 40 }}>⚜️</div> */}
+          <img 
+            src={troop_logo}
+            alt="Troop Logo"
+            style={{ width: 100, height: 100, objectFit: 'contain'}}
+          />
+          <h1 style={{ ...modalTitleStyle, margin: '8px 0 4px', fontSize: 40 }}>Storeroom Ledger</h1>
           <p style={{ margin: 0, color: '#888', fontSize: 13 }}>Scout Quartermaster System</p>
         </div>
 
