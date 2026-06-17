@@ -19,6 +19,7 @@ import CheckOutModal from './components/modals/CheckOutModal';
 import BuyMoreModal from './components/modals/BuyMoreModal';
 import GroupModal from './components/modals/GroupModal';
 import AddMemberModal from './components/modals/AddMemberModal';
+import ItemViewModal from './components/modals/ItemViewModal';
 
 import LogTab from './components/tabs/LogTab';
 import MembersTab from './components/tabs/MembersTab';
@@ -82,7 +83,7 @@ export default function App() {
     const logEntry = {
       type: entry.type,
       item_id: entry.itemId || null,
-      item_name: entry.itemName,
+      // item_name: entry.itemName,
       qty: entry.qty,
       unit: entry.unit,
       requester_id: entry.requesterId,
@@ -91,7 +92,7 @@ export default function App() {
       notes: entry.notes || null,
 
     }
-    console.log('writing to supabase:', logEntry) 
+    console.log('writing to supabase:', logEntry)
     const saved = await writeLog(logEntry);
     setLog((prev) => [saved, ...prev]);
   }
@@ -127,7 +128,6 @@ export default function App() {
     await addLog({
       type: 'OUT',
       itemId: item.id,
-      itemName: item.name,
       qty,
       unit: item.unit,
       requester_id: requester || null,
@@ -157,11 +157,11 @@ export default function App() {
     await addLog({
       type: 'IN',
       itemId: item.id,
-      itemName: item.name,
+      // itemName: item.name,
       qty,
       unit: item.unit,
       requester_id: returner,
-      checker_id: checker ,
+      checker_id: checker,
       event: isPendingDelivery ? 'Delivery received' : null,
       notes: isPendingDelivery ? remarks || null : `${condition}${remarks ? ' — ' + remarks : ''}`,
     })
@@ -182,7 +182,6 @@ export default function App() {
     await addLog({
       type: 'WRITEOFF',
       itemId: item.id,
-      itemName: item.name,
       qty,
       unit: item.unit,
       requesterId: checker,
@@ -241,7 +240,6 @@ export default function App() {
     await addLog({
       type: 'ADD',
       itemId: item.id,
-      itemName: item.name,
       qty,
       unit: item.unit,
       checker: 'Quartermaster',
@@ -260,7 +258,7 @@ export default function App() {
     );
     await addLog({
       type: 'DELETE',
-      itemName: item.name,
+      itemId: item.id,
       qty: item.quantity,
       unit: item.unit,
       scout: 'Quartermaster',
@@ -286,14 +284,16 @@ export default function App() {
   // ── Group handlers ──
   const handleSaveGroup = async (data, editId) => {
     const { id, checkouts, ...groupData } = data
-    const saved = await saveGroup({ 
-      ...groupData, 
-      id: editId || undefined })
+    const saved = await saveGroup({
+      ...groupData,
+      id: editId || undefined
+    })
     if (editId) {
-      setGroups(prev => prev.map(g => g.id === editId 
-        ? { ...saved,
+      setGroups(prev => prev.map(g => g.id === editId
+        ? {
+          ...saved,
           checkouts: g.checkouts || []
-      } : g))
+        } : g))
     } else {
       setGroups(prev => [...prev, saved])
     }
@@ -380,14 +380,14 @@ export default function App() {
           }}
         >
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img 
-            src={troop_logo}
-            alt="Troop Logo"
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img
+              src={troop_logo}
+              alt="Troop Logo"
             // style={{ width: 80, height: 80, objectFit: 'contain'}}
-          />
+            />
             <h1
-              style={{ fontFamily: "'Playfair Display',serif", color:"#fff", align: 'center', paddingTop: 4}}
+              style={{ fontFamily: "'Playfair Display',serif", color: "#fff", align: 'center', paddingTop: 4 }}
             >
               Storeroom Ledger
             </h1>
@@ -402,14 +402,18 @@ export default function App() {
           </button>
           <button
             onClick={() => setModal({ type: 'newGroup' })}
-            style={{ ...headerBtnStyle,
-              background: '#455a64'}}>
+            style={{
+              ...headerBtnStyle,
+              background: '#455a64'
+            }}>
             👥 Group
           </button>
           <button
             onClick={() => signOut()}
-            style={{ ...headerBtnStyle,
-              background: '#ff0000'}}>
+            style={{
+              ...headerBtnStyle,
+              background: '#ff0000'
+            }}>
             SIGN OUT
           </button>
         </div>
@@ -494,41 +498,42 @@ export default function App() {
             {tab === 'inventory'
               ? '📦 Inventory'
               : tab === 'groups'
-              ? '👥 Groups'
-              : tab === "members" 
-              ? "👤 Members"
-              : tab === "log"
-              ? '📋 Log'
-              : '📂 Categories'}
+                ? '👥 Groups'
+                : tab === "members"
+                  ? "👤 Members"
+                  : tab === "log"
+                    ? '📋 Log'
+                    : '📂 Categories'}
           </button>
         ))}
       </div>
 
       <main style={{ padding: '22px 28px', maxWidth: 1140, margin: '0 auto' }}>
         {/* ── INVENTORY TAB ── */}
-        
-        {activeTab === 'inventory' && 
+
+        {activeTab === 'inventory' &&
           <InventoryTab
-          categories={categories}
-          transactions={transactions}
-          displayItems={displayItems}
-          lowStock={lowStock}
-          search={search}
-          onSearch={setSearch}
-          filterCat={filterCat}
-          onFilterCat={setFilterCat}
-          showRemoved={showRemoved}
-          onToggleRemoved={() => setShowRemoved(v => !v)}
-          onCheckout={item => setModal({ type: 'checkout', item })}
-          onCheckin={item => setModal({ type: 'checkin', item })}
-          onWriteOff={item => setModal({ type: 'writeoff', item })}
-          onBuyMore={item => setModal({ type: 'buymore', item })}
-          onRemove={item => setModal({ type: 'removeItem', item })}
-         />
+            categories={categories}
+            transactions={transactions}
+            displayItems={displayItems}
+            lowStock={lowStock}
+            search={search}
+            onSearch={setSearch}
+            filterCat={filterCat}
+            onFilterCat={setFilterCat}
+            showRemoved={showRemoved}
+            onToggleRemoved={() => setShowRemoved(v => !v)}
+            onCheckout={item => setModal({ type: 'checkout', item })}
+            onCheckin={item => setModal({ type: 'checkin', item })}
+            onWriteOff={item => setModal({ type: 'writeoff', item })}
+            onBuyMore={item => setModal({ type: 'buymore', item })}
+            onRemove={item => setModal({ type: 'removeItem', item })}
+            onView={item => setModal({ type: 'viewItem', item })}
+          />
         }
 
         {/* ── GROUPS TAB ── */}
-        
+
         {activeTab === 'groups' && <GroupsTab
           groups={groups}
           members={members}
@@ -538,8 +543,8 @@ export default function App() {
         }
 
         {/* -- MEMBERS TAB -- */}
-        {activeTab === "members" && <MembersTab 
-          members={members} 
+        {activeTab === "members" && <MembersTab
+          members={members}
           inactiveMembers={inactiveMembers}
           showInactive={showInactive}
           onToggleInactive={() => setShowInactive(v => !v)}
@@ -547,7 +552,7 @@ export default function App() {
           onEditMember={(member) => setModal({ type: "editMember", member })}
           onRestore={handleRestoreMember}
           onDeactivate={handleDeactivateMember}
-          />}
+        />}
 
         {/* ── LOG TAB ── */}
         {activeTab === 'log' && <LogTab log={log} />}
@@ -560,8 +565,8 @@ export default function App() {
           onCategorySubmit={setNewCategory}
           onAddCategory={handleAddCategory}
           onRemoveCategory={handleRemoveCategory}
-         />
-      }
+        />
+        }
       </main>
 
       {/* MODALS */}
@@ -573,13 +578,13 @@ export default function App() {
       )}
       {modal?.type === "checkin" && (
         <>
-        {console.log('passing OpenTransactions:', transactions.filter(t => t.item_id === modal.item.id && t.returned_at === null))}
-        <CheckInModal item={modal.item}
-          openTransactions={transactions.filter(t => 
-            t.item_id === modal.item.id && t.returned_at === null)}
-          members={members}
-          onClose={() => setModal(null)}
-          onConfirm={d => handleCheckIn(modal.item, d)} />
+          {console.log('passing OpenTransactions:', transactions.filter(t => t.item_id === modal.item.id && t.returned_at === null))}
+          <CheckInModal item={modal.item}
+            openTransactions={transactions.filter(t =>
+              t.item_id === modal.item.id && t.returned_at === null)}
+            members={members}
+            onClose={() => setModal(null)}
+            onConfirm={d => handleCheckIn(modal.item, d)} />
         </>
       )}
       {modal?.type === 'writeoff' && (
@@ -590,9 +595,9 @@ export default function App() {
         />
       )}
       {modal?.type === 'addItem' && (
-        <AddItemModal 
-          onClose={() => setModal(null)} 
-          onAdd={handleAddItem} 
+        <AddItemModal
+          onClose={() => setModal(null)}
+          onAdd={handleAddItem}
           categories={categories}
           members={members} />
       )}
@@ -608,6 +613,14 @@ export default function App() {
           item={modal.item}
           onClose={() => setModal(null)}
           onConfirm={(r) => handleRemoveItem(modal.item, r)}
+        />
+      )}
+      {modal?.type === 'viewItem' && (
+        <ItemViewModal
+          item={modal.item}
+          log={log.filter(l => l.item_id === modal.item.id)}
+          transactions={transactions.filter(t => t.item_id === modal.item.id)}
+          onClose={() => setModal(null)}
         />
       )}
       {modal?.type === 'addMember' && (

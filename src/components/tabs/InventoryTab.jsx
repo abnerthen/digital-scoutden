@@ -3,7 +3,7 @@ import { inputStyle, DARK, ACCENT } from "../../constants"
 
 export default function InventoryTab( { 
     transactions, categories, displayItems, lowStock, search, onSearch, filterCat, onFilterCat, showRemoved, 
-    onToggleRemoved, onCheckout, onCheckin, onBuyMore, onWriteOff, onRemove
+    onToggleRemoved, onCheckout, onCheckin, onBuyMore, onWriteOff, onRemove, onView
 } ) {
     return (
           <>
@@ -293,6 +293,22 @@ export default function InventoryTab( {
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => onView(item)}
+                            title="View item details & history"
+                            style={{
+                              padding: '7px 10px',
+                              background: '#f3e5f5',
+                              color: '#6a1b9a',
+                              border: '1.5px solid #ce93d8',
+                              borderRadius: 7,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                            }}
+                          >
+                            👁️
+                          </button>
                           <button
                             onClick={() => onCheckout(item)}
                             disabled={item.quantity === 0}
