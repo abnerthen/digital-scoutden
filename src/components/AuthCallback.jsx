@@ -5,24 +5,42 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    async function exchangeCode() {
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (code) {
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code)
-          if (error) throw error
-          // Redirect to home page
-          window.location.href = '/'
-        } catch (err) {
-          console.error('Error exchanging code:', err)
-          setError(err.message || 'Authentication failed. The link may have expired.')
-        }
-      } else {
-        // No code found, redirect home
-        window.location.href = '/'
+    async function completeSignIn() {
+      const search = new URLSearchParams(window.location.search)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+
+      // Providers report failures on the URL itself, in the query or the hash
+      const providerError =
+        search.get('error_description') || search.get('error') ||
+        hash.get('error_description') || hash.get('error')
+      if (providerError) {
+        setError(providerError)
+        return
       }
+
+      // Nothing to exchange — someone opened this route directly
+      if (!search.has('code') && !hash.has('access_token')) {
+        window.location.replace('/')
+        return
+      }
+
+      // The client is created with detectSessionInUrl (the default), so it parses the
+      // code or token out of the URL itself. getSession() awaits that initialisation,
+      // so by the time it resolves the session is either stored or it failed.
+      const { data, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        setError(sessionError.message)
+        return
+      }
+      if (!data.session) {
+        setError('Could not establish a session from this sign-in link. It may have already been used or expired.')
+        return
+      }
+
+      // replace() so the URL holding the tokens is not left in browser history
+      window.location.replace('/')
     }
-    exchangeCode()
+    completeSignIn()
   }, [])
 
   return (
@@ -34,7 +52,7 @@ export default function AuthCallbackPage() {
             <h2 style={{ fontFamily: "'Playfair Display', serif", color: '#c62828', margin: '0 0 12px' }}>Authentication Error</h2>
             <p style={{ color: '#555', fontSize: 14, lineHeight: 1.5, margin: '0 0 24px' }}>{error}</p>
             <button
-              onClick={() => { window.location.href = '/' }}
+              onClick={() => { window.location.replace('/') }}
               style={{ padding: '10px 24px', background: '#2e7d32', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
             >
               Back to Sign In

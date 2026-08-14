@@ -9,7 +9,6 @@ export async function getGroups() {
   return data.map(group => ({
     ...group,
     members: group.group_members || [],
-    checkouts: [],
   }))
 }
 
@@ -45,6 +44,5 @@ export async function saveGroup(group) {
   return {
     ...fullGroup,
     members: fullGroup.group_members || [],
-    checkouts: [],
   }
 }

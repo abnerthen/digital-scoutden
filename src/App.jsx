@@ -40,7 +40,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('All');
   const [showRemoved, setShowRemoved] = useState(false);
-  const [loading, setLoading] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [newCategory, setNewCategory] = useState("");
   const [inactiveMembers, setInactiveMembers] = useState([])
   const [showInactive, setShowInactive] = useState(false)
@@ -86,8 +86,8 @@ export default function App() {
       // item_name: entry.itemName,
       qty: entry.qty,
       unit: entry.unit,
-      requester_id: entry.requesterId,
-      checker_id: entry.checkerId,
+      requester_id: entry.requesterId ?? null,
+      checker_id: entry.checkerId ?? null,
       event: entry.event || null,
       notes: entry.notes || null,
 
@@ -120,18 +120,13 @@ export default function App() {
     })
     await updateItemQuantity(item.id, item.quantity - qty, item.total_owned)
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - qty } : i))
-    if (groupId) {
-      setGroups(prev => prev.map(g => g.id === groupId
-        ? { ...g, checkouts: [...(g.checkouts || []), { itemId: item.id, itemName: item.name, unit: item.unit, qty, date: Date.now(), event }] }
-        : g))
-    }
     await addLog({
       type: 'OUT',
       itemId: item.id,
       qty,
       unit: item.unit,
-      requester_id: requester || null,
-      checker_id: checker || null,
+      requesterId: requester || null,
+      checkerId: checker || null,
       event: event || null,
       notes: remarks || null,
     })
@@ -160,8 +155,8 @@ export default function App() {
       // itemName: item.name,
       qty,
       unit: item.unit,
-      requester_id: returner,
-      checker_id: checker,
+      requesterId: returner,
+      checkerId: checker,
       event: isPendingDelivery ? 'Delivery received' : null,
       notes: isPendingDelivery ? remarks || null : `${condition}${remarks ? ' — ' + remarks : ''}`,
     })
@@ -242,7 +237,6 @@ export default function App() {
       itemId: item.id,
       qty,
       unit: item.unit,
-      checker: 'Quartermaster',
       notes: notes || null,
       event: receiveNow ? 'Restock — received' : 'Restock — pending delivery',
     });
@@ -261,7 +255,6 @@ export default function App() {
       itemId: item.id,
       qty: item.quantity,
       unit: item.unit,
-      scout: 'Quartermaster',
       notes: reason,
       event: 'Item archived',
     });
@@ -335,16 +328,35 @@ export default function App() {
   const displayItems = (showRemoved ? removedItems : activeItems).filter(
     (i) => {
       const s = search.toLowerCase();
-      return (
-        (i.name.toLowerCase().includes(s) ||
-          i.category.toLowerCase().includes(s)) &&
-        (filterCat === 'All' || i.category === filterCat)
-      );
+      const matchesSearch =
+        i.name.toLowerCase().includes(s) || i.category.toLowerCase().includes(s);
+      // option values come back as strings, category_id may be numeric
+      const matchesCat =
+        filterCat === 'All' || String(i.category_id) === String(filterCat);
+      return matchesSearch && matchesCat;
     }
   );
   const lowStock = activeItems.filter((i) => i.quantity <= 2);
   const totalUnits = activeItems.reduce((a, b) => a + b.quantity, 0);
-  const groupsWithItems = groups.filter((g) => (g.checkouts || []).length > 0);
+
+  // Outstanding checkouts are derived from open transactions so they survive a reload
+  const groupsWithCheckouts = groups.map((g) => ({
+    ...g,
+    checkouts: transactions
+      .filter((t) => t.group_id === g.id && t.returned_at === null)
+      .map((t) => {
+        const item = items.find((i) => i.id === t.item_id);
+        return {
+          itemId: t.item_id,
+          itemName: item?.name || 'Unknown item',
+          unit: item?.unit || '',
+          qty: t.qty,
+          date: t.checked_out_at,
+          event: t.event,
+        };
+      }),
+  }));
+  const groupsWithItems = groupsWithCheckouts.filter((g) => g.checkouts.length > 0);
 
   return (
     <div
@@ -526,7 +538,7 @@ export default function App() {
             onCheckout={item => setModal({ type: 'checkout', item })}
             onCheckin={item => setModal({ type: 'checkin', item })}
             onWriteOff={item => setModal({ type: 'writeoff', item })}
-            onBuyMore={item => setModal({ type: 'buymore', item })}
+            onBuyMore={item => setModal({ type: 'buyMore', item })}
             onRemove={item => setModal({ type: 'removeItem', item })}
             onView={item => setModal({ type: 'viewItem', item })}
           />
@@ -535,7 +547,7 @@ export default function App() {
         {/* ── GROUPS TAB ── */}
 
         {activeTab === 'groups' && <GroupsTab
-          groups={groups}
+          groups={groupsWithCheckouts}
           members={members}
           onAddGroup={() => setModal({ type: 'newGroup' })}
           onGroupDetail={group => setModal({ type: 'groupDetail', group })}
@@ -590,6 +602,7 @@ export default function App() {
       {modal?.type === 'writeoff' && (
         <WriteOffModal
           item={modal.item}
+          members={members}
           onClose={() => setModal(null)}
           onConfirm={(d) => handleWriteOff(modal.item, d)}
         />
@@ -652,7 +665,7 @@ export default function App() {
       )}
       {modal?.type === 'groupDetail' && (
         <GroupDetailModal
-          group={modal.group}
+          group={groupsWithCheckouts.find(g => g.id === modal.group.id) || modal.group}
           onClose={() => setModal(null)}
           onEdit={() => setModal({ type: 'editGroup', group: modal.group })}
         />

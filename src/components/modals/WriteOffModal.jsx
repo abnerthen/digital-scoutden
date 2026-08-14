@@ -4,7 +4,7 @@ import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle, attnBox
 import { CloseButton } from '../elements/buttons';
 import MemberSelect from '../elements/MemberSelect';
 
-export default function WriteOffModal({ item, onClose, onConfirm }) {
+export default function WriteOffModal({ item, members = [], onClose, onConfirm }) {
   const unitsOut = item.total_owned - item.quantity;
   const maxWriteOff = item.quantity;
   const [qty, setQty] = useState(1);
@@ -86,7 +86,7 @@ export default function WriteOffModal({ item, onClose, onConfirm }) {
         <button onClick={onClose} style={btnBase}>Cancel</button>
         <button
           disabled={!reason || maxWriteOff === 0}
-          onClick={() => onConfirm({ qty, reason })}
+          onClick={() => onConfirm({ qty, reason, checker: checkerId || null })}
           style={{ ...btnBase, flex: 2, background: reason && maxWriteOff > 0 ? "#c62828" : "#eee", color: reason && maxWriteOff > 0 ? "#fff" : "#aaa", cursor: reason && maxWriteOff > 0 ? "pointer" : "not-allowed" }}>
           {maxWriteOff === 0 ? "Nothing in store to write off" : `Write Off ${qty} ${item.unit}`}
         </button>
