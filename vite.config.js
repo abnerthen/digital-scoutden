@@ -15,6 +15,14 @@ export default defineConfig({
           environment: 'jsdom',
           setupFiles: ['./src/test/setup.js'],
           include: ['src/**/*.test.{js,jsx}'],
+          // lib/supabase.js calls createClient at module scope, which throws
+          // if these are missing. .env is gitignored, so CI has none — tests
+          // must not depend on a developer's local file. Placeholders only:
+          // every test that touches the network mocks the lib module.
+          env: {
+            VITE_SUPABASE_URL: 'http://localhost:54321',
+            VITE_SUPABASE_ANON_KEY: 'unit-test-placeholder-key',
+          },
         },
       },
       {

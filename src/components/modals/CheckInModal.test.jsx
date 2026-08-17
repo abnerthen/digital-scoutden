@@ -1,8 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import CheckInModal from './CheckInModal'
 import { members, QM, SCOUT, tent, openCheckout } from '../../test/fixtures'
+
+// CheckInModal looks the requester's name up on mount. Without this mock the
+// test issues a real network request — which, before .env.local existed,
+// meant unit tests were querying the production database.
+vi.mock('../../lib/members', () => ({
+  getMemberById: vi.fn().mockResolvedValue({ full_name: 'Jordan Wong' }),
+}))
+
+import CheckInModal from './CheckInModal'
 
 function renderModal(props = {}) {
   const onConfirm = vi.fn()
