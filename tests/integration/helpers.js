@@ -5,6 +5,14 @@ import { createClient } from '@supabase/supabase-js'
 export const LOCAL_URL = 'http://127.0.0.1:54321'
 export const LOCAL_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
 
+// Seeded by supabase/seed.sql. One login per privilege tier.
+export const LOGINS = {
+  quartermaster: 'qm@troop.test',
+  leader: 'sam@troop.test',
+  scout: 'jordan@troop.test',
+  inactive: 'former@troop.test', // still a quartermaster, but active = false
+}
+
 // Seeded by supabase/seed.sql
 export const SEED = {
   email: 'qm@troop.test',
@@ -43,12 +51,29 @@ export function anonClient() {
 
 /** A client signed in as the seeded quartermaster. */
 export async function signedInClient() {
+  return clientFor(SEED.email)
+}
+
+/** A client signed in as any seeded member. */
+export async function clientFor(email, password = SEED.password) {
   const client = createClient(LOCAL_URL, LOCAL_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-  const { error } = await client.auth.signInWithPassword({
-    email: SEED.email, password: SEED.password,
+  const { error } = await client.auth.signInWithPassword({ email, password })
+  if (error) throw new Error(`Could not sign in as ${email}: ${error.message}`)
+  return client
+}
+
+/**
+ * A client for a freshly signed-up account with no members row — the shape of
+ * an outsider who found the publishable key in the JS bundle.
+ */
+export async function strangerClient() {
+  const client = createClient(LOCAL_URL, LOCAL_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
   })
-  if (error) throw new Error(`Could not sign in as ${SEED.email}: ${error.message}`)
+  const email = `stranger-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`
+  const { error } = await client.auth.signUp({ email, password: 'hunter2hunter2' })
+  if (error) throw new Error(`Could not sign up a stranger: ${error.message}`)
   return client
 }
