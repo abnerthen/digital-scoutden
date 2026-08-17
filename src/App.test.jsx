@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
-  items, members, categories, locations, groups, openCheckout,
+  items, members, categories, locations, groups, openCheckout, roles,
 } from './test/fixtures'
 
 vi.mock('./lib/items', () => ({
@@ -35,7 +35,9 @@ vi.mock('./lib/categories', () => ({
 }))
 vi.mock('./lib/locations', () => ({
   getLocations: vi.fn(), addLocation: vi.fn(), deleteLocation: vi.fn(),
+  updateLocation: vi.fn(),
 }))
+vi.mock('./lib/roles', () => ({ getRoles: vi.fn() }))
 
 import App from './App'
 import { getItems } from './lib/items'
@@ -45,6 +47,7 @@ import { getOpenTransactions } from './lib/transactions'
 import { getMembers, getInactiveMembers } from './lib/members'
 import { getCategories } from './lib/categories'
 import { getLocations } from './lib/locations'
+import { getRoles } from './lib/roles'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -56,6 +59,7 @@ beforeEach(() => {
   getInactiveMembers.mockResolvedValue([])
   getCategories.mockResolvedValue(categories)
   getLocations.mockResolvedValue(locations)
+  getRoles.mockResolvedValue(roles)
 })
 
 async function renderApp() {

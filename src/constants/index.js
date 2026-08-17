@@ -10,14 +10,18 @@ export const DARK = '#1a1a1a';
 // client accept a password the server then rejects.
 export const MIN_PASSWORD_LENGTH = 8
 
+// Display labels for the role vocabulary. The authority on which roles exist —
+// and on what each may do — is the `roles` table; this is the UI's copy of the
+// names, in the table's sort_order. An integration test asserts the two agree,
+// so adding a role in a migration without updating this list fails the build.
 export const ROLES = [
-  { value: "scout", label: "Scout" },
   { value: "troop_leader", label: "Troop Leader" },
   { value: "assistant_leader", label: "Assistant Troop Leader" },
+  { value: "scouter", label: "Scouter" },
   { value: "quartermaster", label: "Quartermaster" },
   { value: "assistant_qm", label: "Assistant Quartermaster" },
   { value: "committee_member", label: "Committee Member" },
-  { value: "scouter", label: "Scouter" },
+  { value: "scout", label: "Scout" },
 ]
 
 // ─── Shared styles

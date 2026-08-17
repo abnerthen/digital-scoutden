@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { members, QM, SCOUT, tent, openCheckout } from '../../test/fixtures'
+import { members, checkers, QM, SCOUT, tent, openCheckout } from '../../test/fixtures'
 
 // CheckInModal looks the requester's name up on mount. Without this mock the
 // test issues a real network request — which, before .env.local existed,
@@ -19,6 +19,7 @@ function renderModal(props = {}) {
       item={tent}
       openTransactions={[]}
       members={members}
+      checkers={checkers}
       onClose={vi.fn()}
       onConfirm={onConfirm}
       {...props}

@@ -160,11 +160,55 @@ maybeDescribe('a troop leader', () => {
     await leader.from('members').delete().eq('id', data[0].id)
   })
 
+  // The vocabulary lives in public.roles; members.role is a foreign key to it.
   maybe('cannot invent a role outside the vocabulary', async () => {
     const { error } = await leader
       .from('members').update({ role: 'supreme_commander' }).eq('id', SEED.scout)
     expect(error).not.toBeNull()
-    expect(error.message).toMatch(/members_role_valid|violates check constraint/i)
+    expect(error.message).toMatch(/members_role_fkey|foreign key constraint/i)
+  })
+})
+
+maybeDescribe('the roles table', () => {
+  maybe('is readable by the troop', async () => {
+    const { data } = await scout.from('roles').select('name, label')
+    expect(data.length).toBe(7)
+  })
+
+  // ⚠️ The whole point. These rows are policy, not data: if a leader could set
+  // manages_members on 'scout', every privilege guard in this schema would be
+  // pointless — the escalation would just move one table across.
+  maybe('cannot be edited by a troop leader', async () => {
+    const { data } = await leader
+      .from('roles').update({ manages_members: true }).eq('name', 'scout').select()
+    expect(data ?? []).toHaveLength(0)
+
+    const { data: after } = await leader
+      .from('roles').select('manages_members').eq('name', 'scout').single()
+    expect(after.manages_members).toBe(false)
+  })
+
+  maybe('cannot have a new role added by a troop leader', async () => {
+    const { error } = await leader.from('roles').insert({
+      name: 'supreme_commander', label: 'Supreme Commander',
+      sort_order: 99, manages_inventory: true, manages_members: true,
+    })
+    expect(error).not.toBeNull()
+  })
+
+  maybe('cannot be deleted by a troop leader', async () => {
+    await leader.from('roles').delete().eq('name', 'scout')
+    const { data } = await leader.from('roles').select('name').eq('name', 'scout')
+    expect(data).toHaveLength(1)
+  })
+
+  // A role in use must not vanish from under the members holding it.
+  maybe('keeps roles that members still hold', async () => {
+    const { data } = await leader.from('roles').select('name, manages_inventory, manages_members')
+    const byName = Object.fromEntries(data.map(r => [r.name, r]))
+    expect(byName.quartermaster).toMatchObject({ manages_inventory: true, manages_members: false })
+    expect(byName.troop_leader).toMatchObject({ manages_inventory: true, manages_members: true })
+    expect(byName.scout).toMatchObject({ manages_inventory: false, manages_members: false })
   })
 })
 
@@ -270,5 +314,19 @@ maybeDescribe('the role predicates', () => {
   maybe('report no role for an inactive member', async () => {
     const { data } = await inactive.rpc('current_member_role')
     expect(data).toBeNull()
+  })
+})
+
+// The label list in src/constants/index.js and the roles table are two copies
+// of the same vocabulary. Capabilities come from the database, but the labels
+// are still UI text — so this asserts the two agree, which is the drift the
+// roles table was introduced to stop.
+maybeDescribe('the role vocabulary', () => {
+  maybe('matches ROLES in src/constants/index.js', async () => {
+    const { ROLES } = await import('../../src/constants/index.js')
+    const { data } = await leader.from('roles').select('name, label').order('sort_order')
+
+    expect(data.map(r => r.name)).toEqual(ROLES.map(r => r.value))
+    expect(data.map(r => r.label)).toEqual(ROLES.map(r => r.label))
   })
 })

@@ -103,6 +103,21 @@ export function canPlaceSection(rect, locations, movingId, columns = GRID_COLUMN
     .some(l => rectsOverlap(rect, sectionRect(l)));
 }
 
+/**
+ * Active members who may sign off on a storeroom action — the people the
+ * "checked by" dropdowns offer.
+ *
+ * Derived from the roles table rather than a hardcoded list of role names. The
+ * same `manages_inventory` flag drives can_manage_inventory() in Postgres, so
+ * the dropdown cannot offer someone the database would then refuse.
+ */
+export function selectStoreroomCheckers(members, roles) {
+  const allowed = new Set(
+    roles.filter(r => r.manages_inventory).map(r => r.name)
+  );
+  return members.filter(m => m.active && allowed.has(m.role));
+}
+
 /** Items at or below the low-stock threshold. */
 export function selectLowStock(items, threshold = 2) {
   return items.filter(i => !i.removed && i.quantity <= threshold);

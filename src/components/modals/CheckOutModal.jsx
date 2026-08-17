@@ -28,7 +28,7 @@ const StatBox = ({ label, value, color }) => (
   </div>
 );
 
-export default function CheckOutModal({ item, groups, members, onClose, onConfirm }) {
+export default function CheckOutModal({ item, groups, members, checkers = [], onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState("1");
   const [groupId, setGroupId] = useState("");
@@ -71,7 +71,7 @@ export default function CheckOutModal({ item, groups, members, onClose, onConfir
         <MemberSelect
           value={checkerId}
           onChange={setCheckerId}
-          members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))}
+          members={checkers}
           label="Checked by (QM on duty)"
         />
       </div>

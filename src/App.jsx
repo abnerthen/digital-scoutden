@@ -8,7 +8,8 @@ import { createCheckout, closeTransaction, getOpenTransactions } from './lib/tra
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
 import { getLocations, addLocation, deleteLocation, updateLocation } from './lib/locations';
-import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits, gridRows } from './lib/selectors';
+import { getRoles } from './lib/roles';
+import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits, selectStoreroomCheckers, gridRows } from './lib/selectors';
 import troop_logo from './assets/troop_logo.png';
 
 // import modals
@@ -39,6 +40,7 @@ export default function App() {
   const [members, setMembers] = useState([])
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])
+  const [roles, setRoles] = useState([])
   const [modal, setModal] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory');
   const [search, setSearch] = useState('');
@@ -52,7 +54,7 @@ export default function App() {
 
   useEffect(() => {
     async function load() {
-      const [itemsData, groupsData, logData, txData, membersData, categoriesData, locationsData] = await Promise.all([
+      const [itemsData, groupsData, logData, txData, membersData, categoriesData, locationsData, rolesData] = await Promise.all([
         getItems(),
         getGroups(),
         getLog(),
@@ -60,6 +62,7 @@ export default function App() {
         getMembers(),
         getCategories(),
         getLocations(),
+        getRoles(),
       ])
       setItems(itemsData);
       setGroups(groupsData);
@@ -69,6 +72,7 @@ export default function App() {
       setMembers(membersData);
       setCategories(categoriesData);
       setLocations(locationsData);
+      setRoles(rolesData);
     }
     load();
   }, [])
@@ -381,6 +385,9 @@ export default function App() {
   const displayItems = selectDisplayItems(items, { search, filterCat, showRemoved });
   const lowStock = selectLowStock(items);
   const totalUnits = selectTotalUnits(items);
+  // Who the "checked by" dropdowns may offer. Derived from the roles table, so
+  // it cannot drift from can_manage_inventory() in Postgres.
+  const checkers = selectStoreroomCheckers(members, roles);
 
   // Outstanding checkouts are derived from open transactions so they survive a reload
   const groupsWithCheckouts = selectGroupsWithCheckouts(groups, transactions, items);
@@ -629,6 +636,7 @@ export default function App() {
       {modal?.type === "checkout" && (
         <CheckOutModal item={modal.item} groups={groups}
           members={members}
+          checkers={checkers}
           onClose={() => setModal(null)}
           onConfirm={d => handleCheckOut(modal.item, d)} />
       )}
@@ -639,6 +647,7 @@ export default function App() {
             openTransactions={transactions.filter(t =>
               t.item_id === modal.item.id && t.returned_at === null)}
             members={members}
+            checkers={checkers}
             onClose={() => setModal(null)}
             onConfirm={d => handleCheckIn(modal.item, d)} />
         </>
@@ -646,7 +655,7 @@ export default function App() {
       {modal?.type === 'writeoff' && (
         <WriteOffModal
           item={modal.item}
-          members={members}
+          checkers={checkers}
           onClose={() => setModal(null)}
           onConfirm={(d) => handleWriteOff(modal.item, d)}
         />
@@ -657,12 +666,12 @@ export default function App() {
           onAdd={handleAddItem}
           categories={categories}
           locations={locations}
-          members={members} />
+          checkers={checkers} />
       )}
       {modal?.type === 'buyMore' && (
         <BuyMoreModal
           item={modal.item}
-          members={members}
+          checkers={checkers}
           onClose={() => setModal(null)}
           onConfirm={(d) => handleBuyMore(modal.item, d)}
         />
@@ -670,7 +679,7 @@ export default function App() {
       {modal?.type === 'removeItem' && (
         <RemoveItemModal
           item={modal.item}
-          members={members}
+          checkers={checkers}
           onClose={() => setModal(null)}
           onConfirm={(r, c) => handleRemoveItem(modal.item, r, c)}
         />

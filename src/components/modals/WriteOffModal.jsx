@@ -4,7 +4,7 @@ import { labelStyle, inputStyle, btnBase, ACCENT, DARK, modalTitleStyle, attnBox
 import { CloseButton } from '../elements/buttons';
 import MemberSelect from '../elements/MemberSelect';
 
-export default function WriteOffModal({ item, members = [], onClose, onConfirm }) {
+export default function WriteOffModal({ item, checkers = [], onClose, onConfirm }) {
   const unitsOut = item.total_owned - item.quantity;
   const maxWriteOff = item.quantity;
   const [qty, setQty] = useState(1);
@@ -68,7 +68,7 @@ export default function WriteOffModal({ item, members = [], onClose, onConfirm }
       <MemberSelect
         value={checkerId} 
         onChange={setCheckerId} 
-        members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))} 
+        members={checkers}
         label="Write off by (QM on duty)"
       />
 

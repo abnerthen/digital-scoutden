@@ -18,6 +18,22 @@ export const SCOUT = {
 }
 export const members = [QM, ASSISTANT_QM, SCOUT]
 
+// Mirrors public.roles. `manages_inventory` is the same flag
+// can_manage_inventory() reads in Postgres, so what the dropdowns offer and
+// what the database accepts come from one place.
+export const roles = [
+  { name: 'troop_leader',     label: 'Troop Leader',            sort_order: 1, manages_inventory: true,  manages_members: true },
+  { name: 'assistant_leader', label: 'Assistant Troop Leader',  sort_order: 2, manages_inventory: true,  manages_members: true },
+  { name: 'scouter',          label: 'Scouter',                 sort_order: 3, manages_inventory: true,  manages_members: true },
+  { name: 'quartermaster',    label: 'Quartermaster',           sort_order: 4, manages_inventory: true,  manages_members: false },
+  { name: 'assistant_qm',     label: 'Assistant Quartermaster', sort_order: 5, manages_inventory: true,  manages_members: false },
+  { name: 'committee_member', label: 'Committee Member',        sort_order: 6, manages_inventory: false, manages_members: false },
+  { name: 'scout',            label: 'Scout',                   sort_order: 7, manages_inventory: false, manages_members: false },
+]
+
+/** The members a "checked by" dropdown may offer. */
+export const checkers = [QM, ASSISTANT_QM]
+
 export const TENTAGE = { id: 'c0000000-0000-4000-8000-000000000001', name: 'Tentage' }
 export const COOKING = { id: 'c0000000-0000-4000-8000-000000000002', name: 'Cooking' }
 export const categories = [TENTAGE, COOKING]
