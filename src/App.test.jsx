@@ -134,4 +134,25 @@ describe('tabs', () => {
     await user.click(screen.getByRole('button', { name: /categories/i }))
     expect(await screen.findByPlaceholderText(/new category name/i)).toBeInTheDocument()
   })
+
+  // REGRESSION: App never passed `newCategory` back to CategoriesTab, so its
+  // controlled input was pinned to the default '' and typing did nothing —
+  // you could not add a category at all.
+  it('lets you type a new category name', async () => {
+    const user = userEvent.setup()
+    await renderApp()
+    await user.click(screen.getByRole('button', { name: /categories/i }))
+    const input = await screen.findByPlaceholderText(/new category name/i)
+    await user.type(input, 'Ropes')
+    expect(input).toHaveValue('Ropes')
+  })
+
+  it('lets you type a new location name', async () => {
+    const user = userEvent.setup()
+    await renderApp()
+    await user.click(screen.getByRole('button', { name: /locations/i }))
+    const input = await screen.findByPlaceholderText(/shelf c/i)
+    await user.type(input, 'Shelf D')
+    expect(input).toHaveValue('Shelf D')
+  })
 })

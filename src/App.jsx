@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle, modalTitleStyle } from './constants';
+import React, { useState, useEffect } from 'react';
+import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
@@ -49,7 +49,6 @@ export default function App() {
   const [newLocation, setNewLocation] = useState("");
   const [inactiveMembers, setInactiveMembers] = useState([])
   const [showInactive, setShowInactive] = useState(false)
-  const nextId = useRef(200);
 
   useEffect(() => {
     async function load() {
@@ -595,6 +594,7 @@ export default function App() {
 
         {activeTab === "categories" && <CategoriesTab
           categories={categories}
+          newCategory={newCategory}
           onCategoryChange={e => setNewCategory(e.target.value)}
           onCategorySubmit={setNewCategory}
           onAddCategory={handleAddCategory}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ACCENT, ACCENT2, attnBoxStyle, inputStyle, labelStyle, btnBase } from '../../constants';
+import { ACCENT, inputStyle, labelStyle, btnBase } from '../../constants';
 import Overlay from '../elements/Overlay';
 import MemberSelect from '../elements/MemberSelect';
 
