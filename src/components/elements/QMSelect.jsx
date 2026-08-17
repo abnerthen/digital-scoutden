@@ -1,5 +1,4 @@
 import React from 'react';
-import { labelStyle, inputStyle } from '../../constants';
 import MemberSelect from './MemberSelect';
 
 export default function QMSelect({ value, onChange, members, label = "Checked by (QM on duty)" }) {

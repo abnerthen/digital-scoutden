@@ -6,9 +6,10 @@ import Overlay from '../elements/Overlay';
 import QMSelect from '../elements/QMSelect';
 
 // ─── Add Item Modal (new purchase) ────────────────────────────────────────────
-export default function AddItemModal({ onClose, onAdd, categories, members }) {
+export default function AddItemModal({ onClose, onAdd, categories, locations = [], members }) {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
+  const [locationId, setLocationId] = useState("");
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState('1');
   const [unit, setUnit] = useState('units');
@@ -77,10 +78,19 @@ export default function AddItemModal({ onClose, onAdd, categories, members }) {
       <QMSelect
         value={checkerId}
         onChange={setCheckerId}
-        members={members} 
+        members={members}
         label="Checked by (QM on duty)"
         />
       </div>
+      <label style={labelStyle}>Storeroom Location</label>
+      <select
+        value={locationId}
+        onChange={(e) => setLocationId(e.target.value)}
+        style={inputStyle}
+      >
+        <option value="">Unassigned</option>
+        {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+      </select>
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <label style={labelStyle}>Quantity Purchased</label>
@@ -136,13 +146,14 @@ export default function AddItemModal({ onClose, onAdd, categories, members }) {
           Cancel
         </button>
         <button
-          disabled={!name.trim()}
+          disabled={!name.trim() || !checkerId}
           onClick={() => {
-            if (name.trim()) {
+            if (name.trim() && checkerId) {
                 console.log('adding item:', { name, categoryId, qty, unit, notes, imageFile });
                 onAdd({
                     name,
                     categoryId,
+                    locationId,
                     quantity: qty,
                     unit,
                     checkerId,
@@ -155,9 +166,9 @@ export default function AddItemModal({ onClose, onAdd, categories, members }) {
           style={{
             ...btnBase,
             flex: 2,
-            background: name.trim() ? ACCENT : '#eee',
-            color: name.trim() ? '#fff' : '#aaa',
-            cursor: name.trim() ? 'pointer' : 'not-allowed',
+            background: name.trim() && checkerId ? ACCENT : '#eee',
+            color: name.trim() && checkerId ? '#fff' : '#aaa',
+            cursor: name.trim() && checkerId ? 'pointer' : 'not-allowed',
           }}
         >
           Record Purchase

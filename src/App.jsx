@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle, modalTitleStyle } from './constants';
+import React, { useState, useEffect } from 'react';
+import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
@@ -7,6 +7,8 @@ import { signOut } from './lib/auth';
 import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
+import { getLocations, addLocation, deleteLocation } from './lib/locations';
+import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits } from './lib/selectors';
 import troop_logo from './assets/troop_logo.png';
 
 // import modals
@@ -24,6 +26,7 @@ import ItemViewModal from './components/modals/ItemViewModal';
 import LogTab from './components/tabs/LogTab';
 import MembersTab from './components/tabs/MembersTab';
 import CategoriesTab from './components/tabs/CategoriesTab';
+import LocationsTab from './components/tabs/LocationsTab';
 import GroupsTab from './components/tabs/GroupsTab';
 import InventoryTab from './components/tabs/InventoryTab';
 
@@ -35,26 +38,28 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [members, setMembers] = useState([])
   const [categories, setCategories] = useState([])
+  const [locations, setLocations] = useState([])
   const [modal, setModal] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory');
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('All');
   const [showRemoved, setShowRemoved] = useState(false);
-  const [loading, setLoading] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [newCategory, setNewCategory] = useState("");
+  const [newLocation, setNewLocation] = useState("");
   const [inactiveMembers, setInactiveMembers] = useState([])
   const [showInactive, setShowInactive] = useState(false)
-  const nextId = useRef(200);
 
   useEffect(() => {
     async function load() {
-      const [itemsData, groupsData, logData, txData, membersData, categoriesData] = await Promise.all([
+      const [itemsData, groupsData, logData, txData, membersData, categoriesData, locationsData] = await Promise.all([
         getItems(),
         getGroups(),
         getLog(),
         getOpenTransactions(),
         getMembers(),
         getCategories(),
+        getLocations(),
       ])
       setItems(itemsData);
       setGroups(groupsData);
@@ -63,6 +68,7 @@ export default function App() {
       setLoading(false);
       setMembers(membersData);
       setCategories(categoriesData);
+      setLocations(locationsData);
     }
     load();
   }, [])
@@ -86,19 +92,22 @@ export default function App() {
       // item_name: entry.itemName,
       qty: entry.qty,
       unit: entry.unit,
-      requester_id: entry.requesterId,
-      checker_id: entry.checkerId,
       event: entry.event || null,
       notes: entry.notes || null,
 
     }
+    // requester_id / checker_id are NOT NULL in the DB, and an unselected
+    // MemberSelect yields "". Only send them when we have a real member so any
+    // column default still applies.
+    if (entry.requesterId) logEntry.requester_id = entry.requesterId
+    if (entry.checkerId) logEntry.checker_id = entry.checkerId
     console.log('writing to supabase:', logEntry)
     const saved = await writeLog(logEntry);
     setLog((prev) => [saved, ...prev]);
   }
 
   // ── Item handlers ──
-  const handleCheckOut = async (item, { qty, groupId, groupName, requester, checker, event, remarks }) => {
+  const handleCheckOut = async (item, { qty, groupId, requester, checker, event, remarks }) => {
     const tx = {
       item_id: item.id,
       group_id: groupId || null,
@@ -120,25 +129,20 @@ export default function App() {
     })
     await updateItemQuantity(item.id, item.quantity - qty, item.total_owned)
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - qty } : i))
-    if (groupId) {
-      setGroups(prev => prev.map(g => g.id === groupId
-        ? { ...g, checkouts: [...(g.checkouts || []), { itemId: item.id, itemName: item.name, unit: item.unit, qty, date: Date.now(), event }] }
-        : g))
-    }
     await addLog({
       type: 'OUT',
       itemId: item.id,
       qty,
       unit: item.unit,
-      requester_id: requester || null,
-      checker_id: checker || null,
+      requesterId: requester || null,
+      checkerId: checker || null,
       event: event || null,
       notes: remarks || null,
     })
     setModal(null)
   }
 
-  const handleCheckIn = async (item, { txId, qty, groupId, groupName, returner, checker, condition, remarks, isPendingDelivery }) => {
+  const handleCheckIn = async (item, { txId, qty, returner, checker, condition, remarks, isPendingDelivery }) => {
     const newQty = (item.quantity || 0) + qty;
 
     if (!isPendingDelivery && txId) {
@@ -160,8 +164,8 @@ export default function App() {
       // itemName: item.name,
       qty,
       unit: item.unit,
-      requester_id: returner,
-      checker_id: checker,
+      requesterId: returner,
+      checkerId: checker,
       event: isPendingDelivery ? 'Delivery received' : null,
       notes: isPendingDelivery ? remarks || null : `${condition}${remarks ? ' — ' + remarks : ''}`,
     })
@@ -196,6 +200,8 @@ export default function App() {
     const newItem = await addItem({
       name: data.name,
       category_id: data.categoryId,
+      // the "Unassigned" option yields "", but the column is a nullable uuid FK
+      location_id: data.locationId || null,
       quantity: data.quantity,
       total_owned: data.quantity,
       unit: data.unit,
@@ -228,7 +234,7 @@ export default function App() {
     });
   };
 
-  const handleBuyMore = async (item, { qty, receiveNow, notes }) => {
+  const handleBuyMore = async (item, { qty, receiveNow, notes, checker }) => {
     const newTotalOwned = item.total_owned + qty;
     const newQuantity = receiveNow ? item.quantity + qty : item.quantity;
 
@@ -242,14 +248,15 @@ export default function App() {
       itemId: item.id,
       qty,
       unit: item.unit,
-      checker: 'Quartermaster',
+      requesterId: checker,
+      checkerId: checker,
       notes: notes || null,
       event: receiveNow ? 'Restock — received' : 'Restock — pending delivery',
     });
     setModal(null);
   };
 
-  const handleRemoveItem = async (item, reason) => {
+  const handleRemoveItem = async (item, reason, checker) => {
     await archiveItem(item.id, reason);
     setItems((prev) =>
       prev.map((i) =>
@@ -261,11 +268,25 @@ export default function App() {
       itemId: item.id,
       qty: item.quantity,
       unit: item.unit,
-      scout: 'Quartermaster',
+      requesterId: checker,
+      checkerId: checker,
       notes: reason,
       event: 'Item archived',
     });
     setModal(null);
+  };
+
+  const handleSaveItemNotes = async (id, notes) => {
+    await updateItem(id, { notes });
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notes } : i)));
+  };
+
+  const handleSaveItemLocation = async (id, locationId) => {
+    await updateItem(id, { location_id: locationId });
+    // keep the joined display name in sync with the id we just wrote
+    const name = locations.find((l) => l.id === locationId)?.name || null;
+    setItems((prev) => prev.map((i) =>
+      i.id === id ? { ...i, location_id: locationId, location: name } : i));
   };
 
   // -- Category handlers --
@@ -278,6 +299,23 @@ export default function App() {
     if (window.confirm("Are you sure you want to delete this category? Items in this category will not be deleted but will be uncategorized.")) {
       await deleteCategory(id)
       setCategories(prev => prev.filter(c => c.id !== id))
+    }
+  }
+
+  // -- Location handlers --
+  const handleAddLocation = async (name) => {
+    const newLoc = await addLocation(name)
+    setLocations(prev => [...prev, newLoc])
+  }
+
+  const handleRemoveLocation = async (id) => {
+    if (window.confirm("Are you sure you want to delete this location? Items stored there will not be deleted but will become unassigned.")) {
+      await deleteLocation(id)
+      setLocations(prev => prev.filter(l => l.id !== id))
+      // the FK is ON DELETE SET NULL, so mirror that in local state
+      setItems(prev => prev.map(i => i.location_id === id
+        ? { ...i, location_id: null, location: null }
+        : i))
     }
   }
 
@@ -331,20 +369,13 @@ export default function App() {
 
   // ── Derived ──
   const activeItems = items.filter((i) => !i.removed);
-  const removedItems = items.filter((i) => i.removed);
-  const displayItems = (showRemoved ? removedItems : activeItems).filter(
-    (i) => {
-      const s = search.toLowerCase();
-      return (
-        (i.name.toLowerCase().includes(s) ||
-          i.category.toLowerCase().includes(s)) &&
-        (filterCat === 'All' || i.category === filterCat)
-      );
-    }
-  );
-  const lowStock = activeItems.filter((i) => i.quantity <= 2);
-  const totalUnits = activeItems.reduce((a, b) => a + b.quantity, 0);
-  const groupsWithItems = groups.filter((g) => (g.checkouts || []).length > 0);
+  const displayItems = selectDisplayItems(items, { search, filterCat, showRemoved });
+  const lowStock = selectLowStock(items);
+  const totalUnits = selectTotalUnits(items);
+
+  // Outstanding checkouts are derived from open transactions so they survive a reload
+  const groupsWithCheckouts = selectGroupsWithCheckouts(groups, transactions, items);
+  const groupsWithItems = groupsWithCheckouts.filter((g) => g.checkouts.length > 0);
 
   return (
     <div
@@ -475,7 +506,7 @@ export default function App() {
           borderBottom: '1px solid #e0e0e0',
         }}
       >
-        {['inventory', 'groups', 'members', 'log', 'categories'].map((tab) => (
+        {['inventory', 'groups', 'members', 'log', 'categories', 'locations'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -503,7 +534,9 @@ export default function App() {
                   ? "👤 Members"
                   : tab === "log"
                     ? '📋 Log'
-                    : '📂 Categories'}
+                    : tab === "categories"
+                      ? '📂 Categories'
+                      : '📍 Locations'}
           </button>
         ))}
       </div>
@@ -526,7 +559,7 @@ export default function App() {
             onCheckout={item => setModal({ type: 'checkout', item })}
             onCheckin={item => setModal({ type: 'checkin', item })}
             onWriteOff={item => setModal({ type: 'writeoff', item })}
-            onBuyMore={item => setModal({ type: 'buymore', item })}
+            onBuyMore={item => setModal({ type: 'buyMore', item })}
             onRemove={item => setModal({ type: 'removeItem', item })}
             onView={item => setModal({ type: 'viewItem', item })}
           />
@@ -535,7 +568,7 @@ export default function App() {
         {/* ── GROUPS TAB ── */}
 
         {activeTab === 'groups' && <GroupsTab
-          groups={groups}
+          groups={groupsWithCheckouts}
           members={members}
           onAddGroup={() => setModal({ type: 'newGroup' })}
           onGroupDetail={group => setModal({ type: 'groupDetail', group })}
@@ -561,10 +594,23 @@ export default function App() {
 
         {activeTab === "categories" && <CategoriesTab
           categories={categories}
+          newCategory={newCategory}
           onCategoryChange={e => setNewCategory(e.target.value)}
           onCategorySubmit={setNewCategory}
           onAddCategory={handleAddCategory}
           onRemoveCategory={handleRemoveCategory}
+        />
+        }
+
+        {/* -- LOCATIONS TAB -- */}
+
+        {activeTab === "locations" && <LocationsTab
+          locations={locations}
+          newLocation={newLocation}
+          onLocationChange={e => setNewLocation(e.target.value)}
+          onLocationSubmit={setNewLocation}
+          onAddLocation={handleAddLocation}
+          onRemoveLocation={handleRemoveLocation}
         />
         }
       </main>
@@ -590,6 +636,7 @@ export default function App() {
       {modal?.type === 'writeoff' && (
         <WriteOffModal
           item={modal.item}
+          members={members}
           onClose={() => setModal(null)}
           onConfirm={(d) => handleWriteOff(modal.item, d)}
         />
@@ -599,11 +646,13 @@ export default function App() {
           onClose={() => setModal(null)}
           onAdd={handleAddItem}
           categories={categories}
+          locations={locations}
           members={members} />
       )}
       {modal?.type === 'buyMore' && (
         <BuyMoreModal
           item={modal.item}
+          members={members}
           onClose={() => setModal(null)}
           onConfirm={(d) => handleBuyMore(modal.item, d)}
         />
@@ -611,15 +660,19 @@ export default function App() {
       {modal?.type === 'removeItem' && (
         <RemoveItemModal
           item={modal.item}
+          members={members}
           onClose={() => setModal(null)}
-          onConfirm={(r) => handleRemoveItem(modal.item, r)}
+          onConfirm={(r, c) => handleRemoveItem(modal.item, r, c)}
         />
       )}
       {modal?.type === 'viewItem' && (
         <ItemViewModal
-          item={modal.item}
+          item={items.find(i => i.id === modal.item.id) || modal.item}
           log={log.filter(l => l.item_id === modal.item.id)}
           transactions={transactions.filter(t => t.item_id === modal.item.id)}
+          locations={locations}
+          onSaveNotes={handleSaveItemNotes}
+          onSaveLocation={handleSaveItemLocation}
           onClose={() => setModal(null)}
         />
       )}
@@ -652,7 +705,7 @@ export default function App() {
       )}
       {modal?.type === 'groupDetail' && (
         <GroupDetailModal
-          group={modal.group}
+          group={groupsWithCheckouts.find(g => g.id === modal.group.id) || modal.group}
           onClose={() => setModal(null)}
           onEdit={() => setModal({ type: 'editGroup', group: modal.group })}
         />

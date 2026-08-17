@@ -23,7 +23,12 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // ignoreRestSiblings: `const { id, ...rest } = obj` is the idiom for
+      // omitting a key, so the named siblings are used, not unused.
+      'no-unused-vars': ['error', {
+        varsIgnorePattern: '^[A-Z_]',
+        ignoreRestSiblings: true,
+      }],
     },
   },
 ])

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, setup-authentication]
+  pull_request:
+
+jobs:
+  # Fast feedback: lint, unit tests, production build. No external services.
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          # Build-time only; the real values come from Vercel's own env vars.
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_ANON_KEY: build-placeholder
+
+  # Boots a real Supabase stack and runs the schema/RLS tests against it.
+  # Slower, so it runs alongside rather than blocking the unit job.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm ci
+      # Applies supabase/migrations/* and supabase/seed.sql to a fresh database,
+      # which also proves the migrations still apply from scratch.
+      - run: supabase start
+      - run: npm run test:integration
+      - if: always()
+        run: supabase stop

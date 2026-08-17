@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { DARK, ACCENT, btnBase, modalTitleStyle } from '../../constants';
 import Overlay from '../elements/Overlay';
 import { CloseButton } from '../elements/buttons';
