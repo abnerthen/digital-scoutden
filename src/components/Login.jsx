@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { signIn, signInWithOAuth } from '../lib/auth'
+import { signIn } from '../lib/auth'
 import { modalTitleStyle } from '../constants'
 import troop_logo from '../assets/troop_logo.png'
 
@@ -19,19 +19,6 @@ export default function LoginPage({ onLogin }) {
       setError(err.message)
     }
     setLoading(false)
-  }
-
-  const handleOAuthLogin = async (provider) => {
-    setLoading(true)
-    setError(null)
-    try {
-      // Redirects the browser to the provider — the page unloads here, and the
-      // session is picked up on /auth/callback when it redirects back
-      await signInWithOAuth(provider)
-    } catch (err) {
-      setError(err.message)
-      setLoading(false)
-    }
   }
 
   return (
@@ -76,33 +63,13 @@ export default function LoginPage({ onLogin }) {
           {loading ? 'Signing in…' : 'Sign In'}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0' }}>
-          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #ddd' }} />
-          <span style={{ padding: '0 10px', color: '#888', fontSize: 12 }}>OR</span>
-          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #ddd' }} />
-        </div>
-        <button
-          onClick={() => handleOAuthLogin('google')}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px 0',
-            background: '#fff',
-            color: '#333',
-            border: '1.5px solid #ddd',
-            borderRadius: 10,
-            fontWeight: 700,
-            fontSize: 15,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          <img src="https://authjs.dev/img/providers/google.svg" alt="Google" style={{ width: 18, height: 18 }} />
-          Continue with Google
-        </button>
+        {/* Accounts are created by invitation, not self-service. Google sign-in
+            was removed with the provider: any Google account could sign in, and
+            an account was all the old policies asked for. */}
+        <p style={{ margin: '20px 0 0', color: '#888', fontSize: 12, textAlign: 'center', lineHeight: 1.5 }}>
+          Accounts are created by your troop leader.<br />
+          Ask them for an invitation if you do not have one.
+        </p>
       </div>
     </div>
   )
