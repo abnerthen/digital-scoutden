@@ -194,6 +194,49 @@ maybeDescribe('the ledger is append-only', () => {
   })
 })
 
+// members and auth.users are separate tables by necessity — most Scouts never
+// sign in. These keep the join between them honest.
+maybeDescribe('the member/account link', () => {
+  maybe('reports who has a login and who does not', async () => {
+    const { data, error } = await leader.rpc('account_link_report')
+    expect(error).toBeNull()
+    const states = new Set(data.map(r => r.state))
+    expect(states.has('linked')).toBe(true)
+    expect(states.has('no login')).toBe(true)
+  })
+
+  // The account list is not roster data; it should not be readable by the
+  // storeroom team, let alone the troop at large.
+  maybe('is not readable by a quartermaster', async () => {
+    const { error } = await qm.rpc('account_link_report')
+    expect(error).not.toBeNull()
+  })
+
+  maybe('is not readable by a scout', async () => {
+    const { error } = await scout.rpc('account_link_report')
+    expect(error).not.toBeNull()
+  })
+
+  maybe('refuses a link to an account that does not exist', async () => {
+    const { error } = await leader
+      .from('members')
+      .update({ auth_user_id: '99999999-9999-4999-8999-999999999999' })
+      .eq('id', SEED.scout)
+    expect(error).not.toBeNull()
+    expect(error.message).toMatch(/foreign key|members_auth_user_id_fkey/i)
+  })
+
+  // link_member_on_confirm matches on lower(email), so two members differing
+  // only in case would make it arbitrary which one claimed an account.
+  maybe('refuses two members whose emails differ only by case', async () => {
+    const { error } = await leader.from('members').insert({
+      full_name: 'Impostor', email: 'QM@TROOP.TEST', role: 'scout',
+    })
+    expect(error).not.toBeNull()
+    expect(error.message).toMatch(/members_email_key_ci|duplicate key/i)
+  })
+})
+
 maybeDescribe('the role predicates', () => {
   // NULL is not false. current_member_role() is NULL for a non-member, and
   // `NULL in (...)` is NULL — which RLS treats as deny, but PL/pgSQL does not:
