@@ -23,8 +23,10 @@ export const COOKING = { id: 'c0000000-0000-4000-8000-000000000002', name: 'Cook
 export const categories = [TENTAGE, COOKING]
 
 export const locations = [
-  { id: 'a1000000-0000-4000-8000-000000000001', name: 'Shelf A — Tentage' },
-  { id: 'a1000000-0000-4000-8000-000000000002', name: 'Shelf B — Cooking' },
+  { id: 'a1000000-0000-4000-8000-000000000001', name: 'Shelf A — Tentage',
+    grid_x: 0, grid_y: 0, grid_w: 2, grid_h: 1 },
+  { id: 'a1000000-0000-4000-8000-000000000002', name: 'Shelf B — Cooking',
+    grid_x: 2, grid_y: 0, grid_w: 2, grid_h: 1 },
 ]
 
 export const tent = {

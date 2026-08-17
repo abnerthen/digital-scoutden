@@ -7,8 +7,8 @@ import { signOut } from './lib/auth';
 import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
-import { getLocations, addLocation, deleteLocation } from './lib/locations';
-import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits } from './lib/selectors';
+import { getLocations, addLocation, deleteLocation, updateLocation } from './lib/locations';
+import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits, gridRows } from './lib/selectors';
 import troop_logo from './assets/troop_logo.png';
 
 // import modals
@@ -304,8 +304,17 @@ export default function App() {
 
   // -- Location handlers --
   const handleAddLocation = async (name) => {
-    const newLoc = await addLocation(name)
+    // Place new sections on a fresh row beneath everything else, so they can
+    // never land on top of an existing one. Rearranged from the Locations tab.
+    const newLoc = await addLocation(name, {
+      grid_x: 0, grid_y: gridRows(locations), grid_w: 1, grid_h: 1,
+    })
     setLocations(prev => [...prev, newLoc])
+  }
+
+  const handleUpdateLocation = async (id, updates) => {
+    const saved = await updateLocation(id, updates)
+    setLocations(prev => prev.map(l => (l.id === id ? saved : l)))
   }
 
   const handleRemoveLocation = async (id) => {
@@ -611,6 +620,7 @@ export default function App() {
           onLocationSubmit={setNewLocation}
           onAddLocation={handleAddLocation}
           onRemoveLocation={handleRemoveLocation}
+          onUpdateLocation={handleUpdateLocation}
         />
         }
       </main>

@@ -43,6 +43,21 @@ export function selectGroupsWithCheckouts(groups, transactions, items) {
   }));
 }
 
+/** Logical width of the storeroom map, in grid cells. */
+export const GRID_COLUMNS = 6;
+
+/**
+ * Rows needed to contain every location, so the room grows downward rather
+ * than clipping anything placed below the visible area. Also used to park a
+ * newly added location on a fresh row, where it cannot overlap.
+ */
+export function gridRows(locations) {
+  return locations.reduce(
+    (max, l) => Math.max(max, (l.grid_y || 0) + (l.grid_h || 1)),
+    0
+  );
+}
+
 /** Items at or below the low-stock threshold. */
 export function selectLowStock(items, threshold = 2) {
   return items.filter(i => !i.removed && i.quantity <= threshold);

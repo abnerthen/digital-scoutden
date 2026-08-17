@@ -92,11 +92,17 @@ insert into categories (id, name, protected) values
 
 -- ─── Locations ────────────────────────────────────────────────────────────────
 
-insert into locations (id, name, protected) values
-  ('a1000000-0000-4000-8000-000000000001', 'Shelf A — Tentage', false),
-  ('a1000000-0000-4000-8000-000000000002', 'Shelf B — Cooking', false),
-  ('a1000000-0000-4000-8000-000000000003', 'Cage (locked)',     true),
-  ('a1000000-0000-4000-8000-000000000004', 'Loft',              false);
+-- grid_* lay the room out on a 6-column schematic:
+--   ┌───────┬───────┬───────┐
+--   │Shelf A│Shelf B│ Cage  │   (Cage is two rows tall)
+--   ├───────┴───────┤       │
+--   │     Loft      │       │
+--   └───────────────┴───────┘
+insert into locations (id, name, protected, grid_x, grid_y, grid_w, grid_h) values
+  ('a1000000-0000-4000-8000-000000000001', 'Shelf A — Tentage', false, 0, 0, 2, 1),
+  ('a1000000-0000-4000-8000-000000000002', 'Shelf B — Cooking', false, 2, 0, 2, 1),
+  ('a1000000-0000-4000-8000-000000000003', 'Cage (locked)',     true,  4, 0, 2, 2),
+  ('a1000000-0000-4000-8000-000000000004', 'Loft',              false, 0, 1, 4, 1);
 
 -- ─── Items ────────────────────────────────────────────────────────────────────
 -- Mixed states: healthy stock, low stock (quantity <= 2 triggers the banner),

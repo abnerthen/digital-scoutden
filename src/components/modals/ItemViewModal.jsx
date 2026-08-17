@@ -3,6 +3,7 @@ import { ACCENT, labelStyle, inputStyle, btnBase, modalTitleStyle, DARK } from '
 import { CloseButton } from '../elements/buttons';
 import Overlay from '../elements/Overlay';
 import Badge from '../elements/Badge';
+import StoreroomMap from '../elements/StoreroomMap';
 
 export default function ItemViewModal({ onClose, item, log, transactions, locations = [], onSaveNotes, onSaveLocation }) {
   // Hooks must run unconditionally, so they come before the early return below
@@ -191,6 +192,21 @@ export default function ItemViewModal({ onClose, item, log, transactions, locati
           )}
         </div>
       </div>
+
+      {locations.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ ...labelStyle, marginTop: 0 }}>Where to find it</label>
+          <StoreroomMap
+            locations={locations}
+            highlightId={item.location_id || null}
+            caption={
+              item.location
+                ? `${item.name} is kept in ${item.location}.`
+                : 'This item has no location assigned yet.'
+            }
+          />
+        </div>
+      )}
 
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>

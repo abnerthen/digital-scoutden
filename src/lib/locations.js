@@ -9,10 +9,21 @@ export async function getLocations() {
     return data;
 }
 
-export async function addLocation(name) {
+export async function addLocation(name, position = {}) {
     const { data, error } = await supabase
         .from('locations')
-        .insert({ name })
+        .insert({ name, ...position })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function updateLocation(id, updates) {
+    const { data, error } = await supabase
+        .from('locations')
+        .update(updates)
+        .eq('id', id)
         .select()
         .single();
     if (error) throw error;
