@@ -1,5 +1,6 @@
 import React from "react";
 import { inputStyle, ACCENT } from "../../constants";
+import LocationLayoutEditor from "../elements/LocationLayoutEditor";
 
 export default function LocationsTab({
     locations = [],
@@ -7,7 +8,8 @@ export default function LocationsTab({
     onLocationChange,
     onLocationSubmit,
     onAddLocation,
-    onRemoveLocation
+    onRemoveLocation,
+    onUpdateLocation
 }) {
     const handleAdd = async () => {
         const trimmed = newLocation.trim();
@@ -28,9 +30,17 @@ export default function LocationsTab({
               marginBottom: 6
             }}>Storeroom Locations</h3>
             <p style={{ margin: "0 0 16px", color: "#777", fontSize: 14 }}>
-              Where items physically live. Removing a location leaves its items in
-              place — they simply become unassigned.
+              Where items physically live. Arrange the plan below to match your den —
+              it is shown, with the relevant section highlighted, whenever you open an
+              item. Removing a location leaves its items in place, simply unassigned.
             </p>
+
+            {onUpdateLocation && (
+              <LocationLayoutEditor
+                locations={locations}
+                onUpdateLocation={onUpdateLocation}
+              />
+            )}
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <input
                 placeholder="e.g. Shelf C — Ropes"
@@ -69,8 +79,12 @@ export default function LocationsTab({
                     borderBottom: i < locations.length - 1 ? "1px solid #f0ece4" : "none"
                   }}
                   >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 600 }}>📍 {loc.name}</span>
+                    <span style={{ fontSize: 11, color: "#aaa" }}>
+                      column {(loc.grid_x || 0) + 1}, row {(loc.grid_y || 0) + 1}
+                      {" · "}{loc.grid_w || 1}×{loc.grid_h || 1}
+                    </span>
                     {loc.protected && (
                       <span style={{
                         fontSize: 11,

@@ -12,13 +12,13 @@ import BuyMoreModal from './BuyMoreModal'
 import RemoveItemModal from './RemoveItemModal'
 import AddItemModal from './AddItemModal'
 
-import { members, QM, SCOUT, tent, groups, categories, locations } from '../../test/fixtures'
+import { members, checkers, QM, SCOUT, tent, groups, categories, locations } from '../../test/fixtures'
 
 describe('CheckOutModal', () => {
   const setup = () => {
     const onConfirm = vi.fn()
     render(
-      <CheckOutModal item={tent} groups={groups} members={members}
+      <CheckOutModal item={tent} groups={groups} members={members} checkers={checkers}
         onClose={vi.fn()} onConfirm={onConfirm} />
     )
     return { onConfirm }
@@ -47,7 +47,7 @@ describe('WriteOffModal', () => {
   const setup = (props = {}) => {
     const onConfirm = vi.fn()
     render(
-      <WriteOffModal item={tent} members={members}
+      <WriteOffModal item={tent} checkers={checkers}
         onClose={vi.fn()} onConfirm={onConfirm} {...props} />
     )
     return { onConfirm }
@@ -92,7 +92,7 @@ describe('BuyMoreModal', () => {
   const setup = () => {
     const onConfirm = vi.fn()
     render(
-      <BuyMoreModal item={tent} members={members}
+      <BuyMoreModal item={tent} checkers={checkers}
         onClose={vi.fn()} onConfirm={onConfirm} />
     )
     return { onConfirm }
@@ -122,7 +122,7 @@ describe('RemoveItemModal', () => {
   const setup = () => {
     const onConfirm = vi.fn()
     render(
-      <RemoveItemModal item={tent} members={members}
+      <RemoveItemModal item={tent} checkers={checkers}
         onClose={vi.fn()} onConfirm={onConfirm} />
     )
     return { onConfirm }
@@ -155,7 +155,7 @@ describe('AddItemModal', () => {
   const setup = () => {
     const onAdd = vi.fn()
     render(
-      <AddItemModal categories={categories} locations={locations} members={members}
+      <AddItemModal categories={categories} locations={locations} checkers={checkers}
         onClose={vi.fn()} onAdd={onAdd} />
     )
     return { onAdd }

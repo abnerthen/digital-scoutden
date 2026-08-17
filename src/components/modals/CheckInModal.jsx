@@ -6,7 +6,7 @@ import MemberSelect from '../elements/MemberSelect';
 import QMSelect from '../elements/QMSelect';
 import { getMemberById } from '../../lib/members';
 
-export default function CheckInModal({ item, openTransactions, members, onClose, onConfirm }) {
+export default function CheckInModal({ item, openTransactions, members, checkers = [], onClose, onConfirm }) {
   console.log('CheckInModal openTransactions:', openTransactions)
   const maxIn = (item.total_owned || 0) - (item.quantity || 0);
   const hasPendingDelivery = maxIn > 0 && openTransactions.length === 0 || 
@@ -121,7 +121,7 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
             <MemberSelect 
               value={checkerId} 
               onChange={setCheckerId} 
-              members={members.filter(m => ["quartermaster", "assistant_qm"].includes(m.role))} 
+              members={checkers}
               label="Checked by (QM on duty)"
               />
           </div>
@@ -190,7 +190,7 @@ export default function CheckInModal({ item, openTransactions, members, onClose,
             <QMSelect 
             value={checkerId} 
               onChange={setCheckerId} 
-              members={members} 
+              checkers={checkers} 
               label='Checked By*' />
           </div>
 

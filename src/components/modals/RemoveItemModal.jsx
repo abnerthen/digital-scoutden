@@ -6,7 +6,7 @@ import Overlay from '../elements/Overlay';
 import MemberSelect from '../elements/MemberSelect';
 
 // ─── Remove Item Modal ─────────────────────────────────────────────────────────
-export default function RemoveItemModal({ item, members = [], onClose, onConfirm }) {
+export default function RemoveItemModal({ item, checkers = [], onClose, onConfirm }) {
   const [reason, setReason] = useState('');
   const [checkerId, setCheckerId] = useState('');
   return (
@@ -46,7 +46,7 @@ export default function RemoveItemModal({ item, members = [], onClose, onConfirm
       <MemberSelect
         value={checkerId}
         onChange={setCheckerId}
-        members={members.filter((m) => ['quartermaster', 'assistant_qm'].includes(m.role))}
+        members={checkers}
         label="Archived by (QM on duty)"
       />
       <div

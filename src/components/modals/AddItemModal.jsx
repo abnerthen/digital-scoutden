@@ -6,7 +6,7 @@ import Overlay from '../elements/Overlay';
 import QMSelect from '../elements/QMSelect';
 
 // ─── Add Item Modal (new purchase) ────────────────────────────────────────────
-export default function AddItemModal({ onClose, onAdd, categories, locations = [], members }) {
+export default function AddItemModal({ onClose, onAdd, categories, locations = [], checkers = [] }) {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [locationId, setLocationId] = useState("");
@@ -78,7 +78,7 @@ export default function AddItemModal({ onClose, onAdd, categories, locations = [
       <QMSelect
         value={checkerId}
         onChange={setCheckerId}
-        members={members}
+        checkers={checkers}
         label="Checked by (QM on duty)"
         />
       </div>

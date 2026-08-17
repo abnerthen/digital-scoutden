@@ -3,7 +3,7 @@ import { ACCENT, inputStyle, labelStyle, btnBase } from '../../constants';
 import Overlay from '../elements/Overlay';
 import MemberSelect from '../elements/MemberSelect';
 
-export default function BuyMoreModal({ item, members = [], onClose, onConfirm }) {
+export default function BuyMoreModal({ item, checkers = [], onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState('1');
   const [receiveNow, setReceiveNow] = useState(true);
@@ -176,7 +176,7 @@ export default function BuyMoreModal({ item, members = [], onClose, onConfirm })
       <MemberSelect
         value={checkerId}
         onChange={setCheckerId}
-        members={members.filter((m) => ['quartermaster', 'assistant_qm'].includes(m.role))}
+        members={checkers}
         label="Purchased by (QM on duty)"
       />
 

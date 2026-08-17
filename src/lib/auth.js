@@ -28,6 +28,22 @@ export async function getSession() {
   return data.session
 }
 
+/**
+ * Sets the signed-in user's password.
+ *
+ * Used by the invite flow: an invite link signs the user in before they have a
+ * password, so `must_set_password` is cleared here — that flag is what keeps
+ * them on the set-password page until they actually have credentials.
+ */
+export async function setPassword(password) {
+  const { data, error } = await supabase.auth.updateUser({
+    password,
+    data: { must_set_password: false },
+  })
+  if (error) throw error
+  return data
+}
+
 export async function getCurrentMember() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
