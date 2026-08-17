@@ -11,7 +11,8 @@
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",
     "test:integration": "vitest run --project integration",
-    "test:all": "vitest run"
+    "test:all": "vitest run",
+    "invite": "node scripts/invite.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",
