@@ -5,6 +5,11 @@ export const ACCENT2 = '#ff8f00';
 export const BG = '#f5f0e8';
 export const DARK = '#1a1a1a';
 
+// Supabase's own default minimum is 6; we ask for a little more. Raising this
+// past the project's Auth setting is safe, lowering it below would let the
+// client accept a password the server then rejects.
+export const MIN_PASSWORD_LENGTH = 8
+
 export const ROLES = [
   { value: "scout", label: "Scout" },
   { value: "troop_leader", label: "Troop Leader" },
