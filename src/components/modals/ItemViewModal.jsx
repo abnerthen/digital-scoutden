@@ -1,11 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ACCENT, labelStyle, inputStyle, btnBase, modalTitleStyle, DARK } from '../../constants';
 import { CloseButton } from '../elements/buttons';
 import Overlay from '../elements/Overlay';
 import Badge from '../elements/Badge';
 
-export default function ItemViewModal({ onClose, item, log, transactions }) {
+export default function ItemViewModal({ onClose, item, log, transactions, locations = [], onSaveNotes, onSaveLocation }) {
+  // Hooks must run unconditionally, so they come before the early return below
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
   if (!item) return null;
+
+  const startEditing = () => {
+    setDraft(item.notes || '');
+    setError(null);
+    setEditingNotes(true);
+  };
+
+  const saveNotes = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      // notes is nullable — store empty input as null rather than ''
+      await onSaveNotes(item.id, draft.trim() || null);
+      setEditingNotes(false);
+    } catch (err) {
+      setError(err.message);
+    }
+    setSaving(false);
+  };
 
   return (
     <Overlay wide>
@@ -139,6 +164,26 @@ export default function ItemViewModal({ onClose, item, log, transactions }) {
             </span>
           </div>
 
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: '#888' }}>📍</span>
+            {onSaveLocation ? (
+              <select
+                value={item.location_id || ''}
+                onChange={(e) => onSaveLocation(item.id, e.target.value || null)}
+                style={{ ...inputStyle, width: 'auto', padding: '5px 10px', fontSize: 13 }}
+              >
+                <option value="">Unassigned</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            ) : (
+              <span style={{ fontSize: 13, color: item.location ? '#555' : '#aaa' }}>
+                {item.location || 'Unassigned'}
+              </span>
+            )}
+          </div>
+
           {item.removedReason && (
             <div style={{ marginTop: 8, color: '#c62828', fontSize: 13, fontWeight: 500 }}>
               Reason: {item.removedReason}
@@ -147,12 +192,78 @@ export default function ItemViewModal({ onClose, item, log, transactions }) {
         </div>
       </div>
 
-      {item.notes && (
-        <div style={{ marginBottom: 20, padding: 12, background: '#f9f9f9', borderRadius: 8, fontSize: 14, color: '#555' }}>
-          <strong style={{ display: 'block', marginBottom: 4, color: '#333' }}>Notes</strong>
-          {item.notes}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <label style={{ ...labelStyle, marginTop: 0, marginBottom: 0 }}>Notes</label>
+          {onSaveNotes && !editingNotes && (
+            <button
+              onClick={startEditing}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: ACCENT,
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              ✎ Edit
+            </button>
+          )}
         </div>
-      )}
+
+        {editingNotes ? (
+          <>
+            <textarea
+              rows={3}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Provenance, quirks, handling instructions…"
+              style={{ ...inputStyle, resize: 'vertical' }}
+            />
+            {error && (
+              <p style={{ color: '#c62828', fontSize: 12, margin: '6px 0 0' }}>{error}</p>
+            )}
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button
+                onClick={() => setEditingNotes(false)}
+                disabled={saving}
+                style={btnBase}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveNotes}
+                disabled={saving}
+                style={{
+                  ...btnBase,
+                  flex: 2,
+                  background: saving ? '#ccc' : ACCENT,
+                  color: '#fff',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {saving ? 'Saving…' : 'Save Notes'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div
+            style={{
+              padding: 12,
+              background: '#f9f9f9',
+              borderRadius: 8,
+              fontSize: 14,
+              color: item.notes ? '#555' : '#aaa',
+              fontStyle: item.notes ? 'normal' : 'italic',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {item.notes || 'No notes yet.'}
+          </div>
+        )}
+      </div>
 
       {transactions && transactions.length > 0 && (
         <div style={{ marginBottom: 24 }}>

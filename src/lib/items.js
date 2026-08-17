@@ -3,13 +3,14 @@ import { supabase } from './supabase'
 export async function getItems() {
   const { data, error } = await supabase
     .from('items')
-    .select('*, categories(name)')
+    .select('*, categories(name), locations(name)')
     .order('category_id')
   if (error) throw error
   return data.map(item => ({
     ...item,
     total_owned: item.total_owned,
     category: item.categories?.name || 'Uncategorized',
+    location: item.locations?.name || null,
   }))
 }
 
@@ -31,13 +32,14 @@ export async function addItem(item) {
   const { data, error } = await supabase
     .from('items')
     .insert(item)
-    .select('*, categories(name)')
+    .select('*, categories(name), locations(name)')
     .single()
   if (error) throw error
   return {
     ...data,
     total_owned: data.total_owned,
     category: data.categories?.name || 'Other',
+    location: data.locations?.name || null,
   }
 }
 

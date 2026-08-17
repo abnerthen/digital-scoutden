@@ -85,9 +85,9 @@ export default function WriteOffModal({ item, members = [], onClose, onConfirm }
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onClose} style={btnBase}>Cancel</button>
         <button
-          disabled={!reason || maxWriteOff === 0}
-          onClick={() => onConfirm({ qty, reason, checker: checkerId || null })}
-          style={{ ...btnBase, flex: 2, background: reason && maxWriteOff > 0 ? "#c62828" : "#eee", color: reason && maxWriteOff > 0 ? "#fff" : "#aaa", cursor: reason && maxWriteOff > 0 ? "pointer" : "not-allowed" }}>
+          disabled={!reason || !checkerId || maxWriteOff === 0}
+          onClick={() => onConfirm({ qty, reason, checker: checkerId })}
+          style={{ ...btnBase, flex: 2, background: reason && checkerId && maxWriteOff > 0 ? "#c62828" : "#eee", color: reason && checkerId && maxWriteOff > 0 ? "#fff" : "#aaa", cursor: reason && checkerId && maxWriteOff > 0 ? "pointer" : "not-allowed" }}>
           {maxWriteOff === 0 ? "Nothing in store to write off" : `Write Off ${qty} ${item.unit}`}
         </button>
       </div>

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { ACCENT, ACCENT2, attnBoxStyle, inputStyle, labelStyle, btnBase } from '../../constants';
 import Overlay from '../elements/Overlay';
+import MemberSelect from '../elements/MemberSelect';
 
-export default function BuyMoreModal({ item, onClose, onConfirm }) {
+export default function BuyMoreModal({ item, members = [], onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
   const [qtyDisplay, setQtyDisplay] = useState('1');
   const [receiveNow, setReceiveNow] = useState(true);
   const [notes, setNotes] = useState('');
+  const [checkerId, setCheckerId] = useState('');
   return (
     <Overlay>
       <div
@@ -171,6 +173,13 @@ export default function BuyMoreModal({ item, onClose, onConfirm }) {
         </div>
       </div>
 
+      <MemberSelect
+        value={checkerId}
+        onChange={setCheckerId}
+        members={members.filter((m) => ['quartermaster', 'assistant_qm'].includes(m.role))}
+        label="Purchased by (QM on duty)"
+      />
+
       <label style={labelStyle}>Notes</label>
       <textarea
         rows={2}
@@ -188,8 +197,15 @@ export default function BuyMoreModal({ item, onClose, onConfirm }) {
           Cancel
         </button>
         <button
-          onClick={() => onConfirm({ qty, receiveNow, notes })}
-          style={{ ...btnBase, flex: 2, background: ACCENT, color: '#fff' }}
+          disabled={!checkerId}
+          onClick={() => onConfirm({ qty, receiveNow, notes, checker: checkerId })}
+          style={{
+            ...btnBase,
+            flex: 2,
+            background: checkerId ? ACCENT : '#eee',
+            color: checkerId ? '#fff' : '#aaa',
+            cursor: checkerId ? 'pointer' : 'not-allowed',
+          }}
         >
           Confirm Purchase
         </button>

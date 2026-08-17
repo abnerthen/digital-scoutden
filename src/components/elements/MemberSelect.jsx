@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { labelStyle, inputStyle, ROLES } from '../../constants';
 
 const ROLE_LABELS = Object.fromEntries(
@@ -8,17 +8,19 @@ const ROLE_LABELS = Object.fromEntries(
 export default function MemberSelect({ 
   value, onChange, 
   members, excludeIds = [],label = "Requested by" }) {
-  const availableMembers = members.filter(m => 
-    !(m.role === "scouter") 
-    && m.active 
+  const availableMembers = members.filter(m =>
+    !(m.role === "scouter")
+    && m.active
     && !excludeIds.includes(m.id)
   )
+  const selectId = useId()
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <select 
-        value={value} 
-        onChange={e => onChange(e.target.value)} 
+      <label htmlFor={selectId} style={labelStyle}>{label}</label>
+      <select
+        id={selectId}
+        value={value}
+        onChange={e => onChange(e.target.value)}
         style={inputStyle}>
         <option value="">Select a member</option>
         {availableMembers.map(m => (

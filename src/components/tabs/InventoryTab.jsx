@@ -205,6 +205,17 @@ export default function InventoryTab( {
                         {item.category}
                       </span>
                     </div>
+                    {item.location && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: '#6a1b9a',
+                          marginBottom: 2,
+                        }}
+                      >
+                        📍 {item.location}
+                      </div>
+                    )}
                     {item.removed ? (
                       <div
                         style={{

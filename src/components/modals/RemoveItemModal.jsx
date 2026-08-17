@@ -3,10 +3,12 @@ import { labelStyle, inputStyle, btnBase, modalTitleStyle, attnBoxStyle } from '
 // import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from '../../lib/items';
 
 import Overlay from '../elements/Overlay';
+import MemberSelect from '../elements/MemberSelect';
 
 // ─── Remove Item Modal ─────────────────────────────────────────────────────────
-export default function RemoveItemModal({ item, onClose, onConfirm }) {
+export default function RemoveItemModal({ item, members = [], onClose, onConfirm }) {
   const [reason, setReason] = useState('');
+  const [checkerId, setCheckerId] = useState('');
   return (
     <Overlay>
       <h2
@@ -41,6 +43,12 @@ export default function RemoveItemModal({ item, onClose, onConfirm }) {
         <option>Transferred to another troop</option>
         <option>Other</option>
       </select>
+      <MemberSelect
+        value={checkerId}
+        onChange={setCheckerId}
+        members={members.filter((m) => ['quartermaster', 'assistant_qm'].includes(m.role))}
+        label="Archived by (QM on duty)"
+      />
       <div
         style={{
           ...attnBoxStyle,
@@ -57,14 +65,14 @@ export default function RemoveItemModal({ item, onClose, onConfirm }) {
           Cancel
         </button>
         <button
-          disabled={!reason}
-          onClick={() => onConfirm(reason)}
+          disabled={!reason || !checkerId}
+          onClick={() => onConfirm(reason, checkerId)}
           style={{
             ...btnBase,
             flex: 2,
-            background: reason ? '#c62828' : '#eee',
-            color: reason ? '#fff' : '#aaa',
-            cursor: reason ? 'pointer' : 'not-allowed',
+            background: reason && checkerId ? '#c62828' : '#eee',
+            color: reason && checkerId ? '#fff' : '#aaa',
+            cursor: reason && checkerId ? 'pointer' : 'not-allowed',
           }}
         >
           Archive Item
