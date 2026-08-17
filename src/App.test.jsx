@@ -125,7 +125,16 @@ describe('tabs', () => {
     await renderApp()
     await user.click(screen.getByRole('button', { name: /locations/i }))
     expect(await screen.findByText(/storeroom locations/i)).toBeInTheDocument()
-    expect(screen.getByText(/Shelf B — Cooking/)).toBeInTheDocument()
+    // the name appears twice: once in the layout editor, once in the list
+    expect(screen.getAllByText(/Shelf B — Cooking/).length).toBeGreaterThan(0)
+  })
+
+  it('offers a draggable layout editor on the Locations tab', async () => {
+    const user = userEvent.setup()
+    await renderApp()
+    await user.click(screen.getByRole('button', { name: /locations/i }))
+    expect(await screen.findByRole('button', { name: /Shelf A.*column 1 row 1/i }))
+      .toBeInTheDocument()
   })
 
   it('has a Categories tab', async () => {

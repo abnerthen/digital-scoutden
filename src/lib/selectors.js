@@ -58,6 +58,51 @@ export function gridRows(locations) {
   );
 }
 
+/** A location's rectangle, with defaults applied. */
+export function sectionRect(location) {
+  return {
+    x: location.grid_x || 0,
+    y: location.grid_y || 0,
+    w: location.grid_w || 1,
+    h: location.grid_h || 1,
+  };
+}
+
+/** Do two grid rectangles share any cell? */
+export function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && b.x < a.x + a.w &&
+         a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+/**
+ * Keep a rectangle inside the grid: at least one cell, never off the left or
+ * top edge, never past the right-hand column.
+ */
+export function clampToGrid(rect, columns = GRID_COLUMNS) {
+  const w = Math.max(1, Math.min(rect.w, columns));
+  const h = Math.max(1, rect.h);
+  return {
+    w, h,
+    x: Math.max(0, Math.min(rect.x, columns - w)),
+    y: Math.max(0, rect.y),
+  };
+}
+
+/**
+ * Whether `rect` can be placed without landing on another section. The moving
+ * section is excluded by id so it never collides with where it currently is.
+ */
+export function canPlaceSection(rect, locations, movingId, columns = GRID_COLUMNS) {
+  const clamped = clampToGrid(rect, columns);
+  if (clamped.x !== rect.x || clamped.y !== rect.y ||
+      clamped.w !== rect.w || clamped.h !== rect.h) {
+    return false;
+  }
+  return !locations
+    .filter(l => l.id !== movingId)
+    .some(l => rectsOverlap(rect, sectionRect(l)));
+}
+
 /** Items at or below the low-stock threshold. */
 export function selectLowStock(items, threshold = 2) {
   return items.filter(i => !i.removed && i.quantity <= threshold);

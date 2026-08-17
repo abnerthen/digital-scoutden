@@ -1,12 +1,6 @@
 import React from "react";
 import { inputStyle, ACCENT } from "../../constants";
-
-const GRID_FIELDS = [
-    { key: 'grid_x', label: 'X', min: 0 },
-    { key: 'grid_y', label: 'Y', min: 0 },
-    { key: 'grid_w', label: 'W', min: 1 },
-    { key: 'grid_h', label: 'H', min: 1 },
-];
+import LocationLayoutEditor from "../elements/LocationLayoutEditor";
 
 export default function LocationsTab({
     locations = [],
@@ -36,11 +30,17 @@ export default function LocationsTab({
               marginBottom: 6
             }}>Storeroom Locations</h3>
             <p style={{ margin: "0 0 16px", color: "#777", fontSize: 14 }}>
-              Where items physically live. X and Y set the position on the storeroom
-              map, W and H its size in grid cells; the map is shown when you open an
-              item. Removing a location leaves its items in place — they simply
-              become unassigned.
+              Where items physically live. Arrange the plan below to match your den —
+              it is shown, with the relevant section highlighted, whenever you open an
+              item. Removing a location leaves its items in place, simply unassigned.
             </p>
+
+            {onUpdateLocation && (
+              <LocationLayoutEditor
+                locations={locations}
+                onUpdateLocation={onUpdateLocation}
+              />
+            )}
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <input
                 placeholder="e.g. Shelf C — Ropes"
@@ -81,29 +81,10 @@ export default function LocationsTab({
                   >
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 600 }}>📍 {loc.name}</span>
-                    {onUpdateLocation && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-                        {GRID_FIELDS.map(f => (
-                          <label
-                            key={f.key}
-                            style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "#888" }}
-                          >
-                            {f.label}
-                            <input
-                              type="number"
-                              min={f.min}
-                              value={loc[f.key] ?? f.min}
-                              onChange={e => {
-                                const n = parseInt(e.target.value, 10)
-                                if (!isNaN(n) && n >= f.min) onUpdateLocation(loc.id, { [f.key]: n })
-                              }}
-                              aria-label={`${loc.name} ${f.label}`}
-                              style={{ ...inputStyle, width: 52, padding: "3px 6px", fontSize: 12 }}
-                            />
-                          </label>
-                        ))}
-                      </span>
-                    )}
+                    <span style={{ fontSize: 11, color: "#aaa" }}>
+                      column {(loc.grid_x || 0) + 1}, row {(loc.grid_y || 0) + 1}
+                      {" · "}{loc.grid_w || 1}×{loc.grid_h || 1}
+                    </span>
                     {loc.protected && (
                       <span style={{
                         fontSize: 11,
