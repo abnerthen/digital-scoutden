@@ -9,9 +9,10 @@
 // could read every member's name and email, zero out the inventory, and delete
 // the entire audit log.
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
-  clientFor, strangerClient, stackIsRunning, LOGINS, SEED,
+  clientFor, strangerClient, adminClient, deleteAccountFor,
+  stackIsRunning, LOGINS, SEED,
 } from './helpers'
 
 const running = await stackIsRunning()
@@ -328,5 +329,94 @@ maybeDescribe('the role vocabulary', () => {
 
     expect(data.map(r => r.name)).toEqual(ROLES.map(r => r.value))
     expect(data.map(r => r.label)).toEqual(ROLES.map(r => r.label))
+  })
+})
+
+// REGRESSION: link_member_on_confirm and guard_member_privileges contradicted
+// each other. GoTrue confirms an invited user on its own connection with no
+// JWT, so can_manage_members() was false and the guard rejected the very link
+// the other trigger was making. The confirmation transaction rolled back and
+// every invite link died with "Error confirming user" — invitations could not
+// be accepted at all, and nothing caught it until the link was actually clicked.
+maybeDescribe('accepting an invitation', () => {
+  const admin = adminClient()
+  const created = []
+
+  afterAll(async () => {
+    for (const id of created) await admin.auth.admin.deleteUser(id)
+  })
+
+  maybe('links the member row when the account is confirmed', async () => {
+    // Idempotent: an earlier run may have left an account for this address,
+    // and createUser would fail with email_exists rather than test anything.
+    await deleteAccountFor('ravi@troop.test')
+
+    const { data, error } = await admin.auth.admin.createUser({
+      email: 'ravi@troop.test',          // seeded member, no login
+      password: 'password123',
+      email_confirm: true,               // what accepting an invite does
+    })
+    expect(error).toBeNull()
+    created.push(data.user.id)
+
+    const { data: member } = await admin
+      .from('members').select('auth_user_id').eq('email', 'ravi@troop.test').single()
+    expect(member.auth_user_id).toBe(data.user.id)
+  })
+
+  // The exemption is narrow: an unclaimed row, claimed by a confirmed account
+  // at the same address. Anything else is still a privilege grant.
+  maybe('refuses to claim a different member\'s row', async () => {
+    const { data } = await admin.auth.admin.createUser({
+      email: `outsider-${Date.now()}@example.com`,
+      password: 'password123',
+      email_confirm: true,
+    })
+    created.push(data.user.id)
+
+    const { error } = await admin
+      .from('members')
+      .update({ auth_user_id: data.user.id })
+      .eq('email', 'mei@troop.test')
+
+    expect(error).not.toBeNull()
+    expect(error.message).toMatch(/Only troop leaders may link a login/i)
+  })
+
+  // REGRESSION: members.auth_user_id is ON DELETE SET NULL, so removing an
+  // account makes the foreign key null that column — and the guard refused it,
+  // turning every attempt to delete a login into "Database error deleting user".
+  maybe('lets an account be deleted, unlinking the member', async () => {
+    await deleteAccountFor('mei@troop.test')
+    const { data } = await admin.auth.admin.createUser({
+      email: 'mei@troop.test', password: 'password123', email_confirm: true,
+    })
+
+    const { data: linked } = await admin
+      .from('members').select('auth_user_id').eq('email', 'mei@troop.test').single()
+    expect(linked.auth_user_id).toBe(data.user.id)
+
+    const { error } = await admin.auth.admin.deleteUser(data.user.id)
+    expect(error).toBeNull()
+
+    // The member survives; only the link goes.
+    const { data: after } = await admin
+      .from('members').select('full_name, auth_user_id').eq('email', 'mei@troop.test').single()
+    expect(after.full_name).toBe('Mei Chen')
+    expect(after.auth_user_id).toBeNull()
+  })
+
+  maybe('leaves an already-claimed row alone', async () => {
+    const { data: before } = await admin
+      .from('members').select('auth_user_id').eq('email', 'qm@troop.test').single()
+
+    const { data } = await admin.auth.admin.createUser({
+      email: 'qm@troop.test', password: 'x', email_confirm: true,
+    }).catch(() => ({ data: { user: null } }))
+    if (data?.user) created.push(data.user.id)
+
+    const { data: after } = await admin
+      .from('members').select('auth_user_id').eq('email', 'qm@troop.test').single()
+    expect(after.auth_user_id).toBe(before.auth_user_id)
   })
 })

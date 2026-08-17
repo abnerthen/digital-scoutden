@@ -1,9 +1,39 @@
 import { createClient } from '@supabase/supabase-js'
+import { execFileSync } from 'node:child_process'
 
 // Fixed local-stack credentials from `npx supabase start`. Identical on every
 // machine and documented publicly, so they are safe to commit.
 export const LOCAL_URL = 'http://127.0.0.1:54321'
 export const LOCAL_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+
+/**
+ * The local stack's service_role key, read at run time rather than written
+ * down.
+ *
+ * It is local-only and identical on every machine, but it carries the shape of
+ * a real Supabase secret key — committing it trips GitHub's push protection,
+ * and the way past that is an allow-list entry that would then also wave
+ * through a genuine key. Cheaper to ask the CLI.
+ */
+let cachedServiceKey
+function localServiceKey() {
+  if (cachedServiceKey) return cachedServiceKey
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return (cachedServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY)
+  }
+  try {
+    const status = JSON.parse(
+      execFileSync('npx', ['supabase', 'status', '-o', 'json'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+    )
+    return (cachedServiceKey = status.SECRET_KEY || status.SERVICE_ROLE_KEY)
+  } catch {
+    // Stack is down; every test here is skipped anyway.
+    return (cachedServiceKey = 'unavailable')
+  }
+}
 
 // Seeded by supabase/seed.sql. One login per privilege tier.
 export const LOGINS = {
@@ -76,4 +106,26 @@ export async function strangerClient() {
   const { error } = await client.auth.signUp({ email, password: 'hunter2hunter2' })
   if (error) throw new Error(`Could not sign up a stranger: ${error.message}`)
   return client
+}
+
+/** A service_role client — creates auth users the way an invitation does. */
+export function adminClient() {
+  return createClient(LOCAL_URL, localServiceKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
+
+/**
+ * Removes any account for an address, so a test that creates one can be run
+ * twice. Deleting the auth user also clears members.auth_user_id, via the
+ * foreign key's ON DELETE SET NULL.
+ */
+export async function deleteAccountFor(email) {
+  const admin = adminClient()
+  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  for (const user of data?.users ?? []) {
+    if (user.email?.toLowerCase() === email.toLowerCase()) {
+      await admin.auth.admin.deleteUser(user.id)
+    }
+  }
 }

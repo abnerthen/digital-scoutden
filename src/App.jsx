@@ -3,13 +3,14 @@ import { BG, DARK, ACCENT, ACCENT2, headerBtnStyle } from './constants';
 import { getItems, addItem, updateItemQuantity, archiveItem, uploadItemImage, updateItem } from './lib/items';
 import { getGroups, saveGroup } from './lib/groups';
 import { getLog, writeLog } from './lib/log';
-import { signOut } from './lib/auth';
+import { signOut, getCurrentMember } from './lib/auth';
 import { createCheckout, closeTransaction, getOpenTransactions } from './lib/transactions';
 import { getMembers, addMember, deactivateMember, updateMember, restoreMember, getInactiveMembers } from './lib/members';
 import { getCategories, addCategory, deleteCategory } from './lib/categories';
 import { getLocations, addLocation, deleteLocation, updateLocation } from './lib/locations';
 import { getRoles } from './lib/roles';
-import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits, selectStoreroomCheckers, gridRows } from './lib/selectors';
+import { inviteMember } from './lib/invites';
+import { selectDisplayItems, selectGroupsWithCheckouts, selectLowStock, selectTotalUnits, selectStoreroomCheckers, memberCan, gridRows } from './lib/selectors';
 import troop_logo from './assets/troop_logo.png';
 
 // import modals
@@ -41,6 +42,7 @@ export default function App() {
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])
   const [roles, setRoles] = useState([])
+  const [currentMember, setCurrentMember] = useState(null)
   const [modal, setModal] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory');
   const [search, setSearch] = useState('');
@@ -54,7 +56,7 @@ export default function App() {
 
   useEffect(() => {
     async function load() {
-      const [itemsData, groupsData, logData, txData, membersData, categoriesData, locationsData, rolesData] = await Promise.all([
+      const [itemsData, groupsData, logData, txData, membersData, categoriesData, locationsData, rolesData, currentMemberData] = await Promise.all([
         getItems(),
         getGroups(),
         getLog(),
@@ -63,6 +65,7 @@ export default function App() {
         getCategories(),
         getLocations(),
         getRoles(),
+        getCurrentMember(),
       ])
       setItems(itemsData);
       setGroups(groupsData);
@@ -73,6 +76,7 @@ export default function App() {
       setCategories(categoriesData);
       setLocations(locationsData);
       setRoles(rolesData);
+      setCurrentMember(currentMemberData);
     }
     load();
   }, [])
@@ -380,6 +384,13 @@ export default function App() {
     setInactiveMembers(prev => prev.filter(m => m.id !== id))
   }
 
+  // Invitations go through an Edge Function, because creating a login needs the
+  // service_role key and that must never reach a browser. Returns a message for
+  // the Members tab to show either way.
+  const handleInvite = async (member) => {
+    await inviteMember(member.id)
+  }
+
   // ── Derived ──
   const activeItems = items.filter((i) => !i.removed);
   const displayItems = selectDisplayItems(items, { search, filterCat, showRemoved });
@@ -388,6 +399,9 @@ export default function App() {
   // Who the "checked by" dropdowns may offer. Derived from the roles table, so
   // it cannot drift from can_manage_inventory() in Postgres.
   const checkers = selectStoreroomCheckers(members, roles);
+  // What the UI offers. The database decides what it allows — these read the
+  // same roles table, so they agree.
+  const canManageMembers = memberCan(currentMember, roles, 'manages_members');
 
   // Outstanding checkouts are derived from open transactions so they survive a reload
   const groupsWithCheckouts = selectGroupsWithCheckouts(groups, transactions, items);
@@ -601,6 +615,8 @@ export default function App() {
           onEditMember={(member) => setModal({ type: "editMember", member })}
           onRestore={handleRestoreMember}
           onDeactivate={handleDeactivateMember}
+          canManageMembers={canManageMembers}
+          onInvite={handleInvite}
         />}
 
         {/* ── LOG TAB ── */}

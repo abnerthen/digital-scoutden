@@ -416,3 +416,10 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Invitations need the service_role key, which must never reach a browser, so
+# they go through an Edge Function instead. verify_jwt stays on: the function
+# additionally checks can_manage_members(), but a signed-in caller is the floor.
+[functions.invite-member]
+enabled = true
+verify_jwt = true
