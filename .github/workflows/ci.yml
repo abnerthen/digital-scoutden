@@ -34,17 +34,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: supabase/setup-cli@v1
-        with:
-          # Pinned rather than `latest`: resolving `latest` calls the GitHub
-          # releases API unauthenticated, which hits the shared runner rate
-          # limit and fails the job before the CLI is even installed. A pinned
-          # version downloads directly. Bump deliberately.
-          version: 2.114.0
+      # The CLI comes from devDependencies via `npm ci`, not from
+      # supabase/setup-cli. That action was a second, unpinned supply chain for
+      # a tool the lockfile already provides, and it took the job down twice on
+      # 17 Aug 2026 — once resolving `latest` through the rate-limited releases
+      # API, once because GitHub could not serve the action repository at all
+      # (429, then 503). npx resolves node_modules/.bin/supabase, so the
+      # version CI runs is the version the lockfile pins.
       - run: npm ci
       # Applies supabase/migrations/* and supabase/seed.sql to a fresh database,
       # which also proves the migrations still apply from scratch.
-      - run: supabase start
+      - run: npx supabase start
       - run: npm run test:integration
       - if: always()
-        run: supabase stop
+        run: npx supabase stop
