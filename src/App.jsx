@@ -469,6 +469,33 @@ export default function App() {
             }}>
             👥 Group
           </button>
+          {/* Who you are signed in as. Worth showing plainly: every
+              permission in the app follows from this member and their role,
+              and an account with no member row sees an empty ledger with no
+              other explanation. */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            textAlign: 'right', color: '#fff', marginRight: 4, lineHeight: 1.25,
+          }}>
+            {currentMember ? (
+              <>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>
+                  {currentMember.full_name}
+                </span>
+                <span style={{ fontSize: 11, opacity: 0.7 }}>
+                  {roles.find(r => r.name === currentMember.role)?.label
+                    || currentMember.role}
+                </span>
+              </>
+            ) : (
+              <span
+                style={{ fontSize: 12, opacity: 0.8 }}
+                title="This login is not linked to a troop member, so there is nothing to show. Ask a troop leader to add you."
+              >
+                Not on the roster
+              </span>
+            )}
+          </div>
           <button
             onClick={() => signOut()}
             style={{

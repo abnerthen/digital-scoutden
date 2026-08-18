@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { setPassword } from '../lib/auth'
 import { setFlash } from '../lib/flash'
-import { modalTitleStyle, MIN_PASSWORD_LENGTH } from '../constants'
+import { modalTitleStyle } from '../constants'
+import { PASSWORD_RULES, missingRequirements, describeMissing } from '../lib/password'
 
 const cardStyle = {
   background: '#fff', borderRadius: 16, padding: 40, width: 360,
@@ -74,8 +75,9 @@ export default function SetPasswordPage() {
   }, [])
 
   const handleSubmit = async () => {
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setFormError(`Please use at least ${MIN_PASSWORD_LENGTH} characters.`)
+    const shortfall = describeMissing(password)
+    if (shortfall) {
+      setFormError(shortfall)
       return
     }
     if (password !== confirm) {
@@ -167,9 +169,38 @@ export default function SetPasswordPage() {
           style={fieldStyle}
         />
 
-        <p style={{ color: '#888', fontSize: 12, margin: '0 0 12px' }}>
-          At least {MIN_PASSWORD_LENGTH} characters.
-        </p>
+        {/* A checklist rather than a sentence: Supabase rejects a weak
+            password with a list of literal character classes, after
+            submitting, without saying which part failed. */}
+        <ul
+          aria-label="Password requirements"
+          style={{ listStyle: 'none', padding: 0, margin: '0 0 14px' }}
+        >
+          {PASSWORD_RULES.map(rule => {
+            const met = rule.test(password)
+            return (
+              <li
+                key={rule.id}
+                data-met={met}
+                style={{
+                  fontSize: 12,
+                  color: met ? '#2e7d32' : password ? '#c62828' : '#999',
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0',
+                }}
+              >
+                <span aria-hidden="true" style={{ width: 12, textAlign: 'center' }}>
+                  {met ? '✓' : '•'}
+                </span>
+                <span>
+                  {rule.label}
+                  <span style={{ position: 'absolute', left: -9999 }}>
+                    {met ? ' — met' : ' — still needed'}
+                  </span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
 
         {formError && (
           <p role="alert" style={{ color: '#c62828', fontSize: 13, margin: '0 0 12px' }}>
@@ -179,7 +210,7 @@ export default function SetPasswordPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={saving || !password || !confirm}
+          disabled={saving || !password || !confirm || missingRequirements(password).length > 0}
           style={{
             width: '100%', padding: '12px 0',
             background: saving ? '#ccc' : '#2e7d32', color: '#fff',

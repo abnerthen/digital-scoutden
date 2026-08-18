@@ -353,7 +353,7 @@ maybeDescribe('accepting an invitation', () => {
 
     const { data, error } = await admin.auth.admin.createUser({
       email: 'ravi@troop.test',          // seeded member, no login
-      password: 'password123',
+      password: 'Password123!',
       email_confirm: true,               // what accepting an invite does
     })
     expect(error).toBeNull()
@@ -369,7 +369,7 @@ maybeDescribe('accepting an invitation', () => {
   maybe('refuses to claim a different member\'s row', async () => {
     const { data } = await admin.auth.admin.createUser({
       email: `outsider-${Date.now()}@example.com`,
-      password: 'password123',
+      password: 'Password123!',
       email_confirm: true,
     })
     created.push(data.user.id)
@@ -389,7 +389,7 @@ maybeDescribe('accepting an invitation', () => {
   maybe('lets an account be deleted, unlinking the member', async () => {
     await deleteAccountFor('mei@troop.test')
     const { data } = await admin.auth.admin.createUser({
-      email: 'mei@troop.test', password: 'password123', email_confirm: true,
+      email: 'mei@troop.test', password: 'Password123!', email_confirm: true,
     })
 
     const { data: linked } = await admin

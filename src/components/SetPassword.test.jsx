@@ -67,16 +67,70 @@ describe('invite link handling', () => {
   })
 })
 
+describe('the requirements checklist', () => {
+  const item = (label) =>
+    screen.getByText(label, { selector: 'li *' }).closest('li')
+
+  it('lists every requirement up front', async () => {
+    await renderReady()
+    const list = screen.getByRole('list', { name: /password requirements/i })
+    expect(list).toBeInTheDocument()
+    for (const label of [
+      'at least 8 characters', 'a small letter', 'a capital letter',
+      'a number', 'a special character',
+    ]) {
+      expect(screen.getByText(label, { selector: 'li *' })).toBeInTheDocument()
+    }
+  })
+
+  // The point of the change: which requirement is unmet, as you type, rather
+  // than a wall of character classes from the server after submitting.
+  it('ticks requirements off as they are met', async () => {
+    const user = userEvent.setup()
+    const pw = await renderReady()
+
+    await user.type(pw, 'password')
+    expect(item('a small letter')).toHaveAttribute('data-met', 'true')
+    expect(item('at least 8 characters')).toHaveAttribute('data-met', 'true')
+    expect(item('a capital letter')).toHaveAttribute('data-met', 'false')
+    expect(item('a number')).toHaveAttribute('data-met', 'false')
+    expect(item('a special character')).toHaveAttribute('data-met', 'false')
+
+    await user.type(pw, 'P1!')
+    for (const label of [
+      'at least 8 characters', 'a small letter', 'a capital letter',
+      'a number', 'a special character',
+    ]) {
+      expect(item(label)).toHaveAttribute('data-met', 'true')
+    }
+  })
+
+  it('will not submit until every requirement is met', async () => {
+    const user = userEvent.setup()
+    const pw = await renderReady()
+
+    await user.type(pw, 'password')
+    await user.type(screen.getByLabelText(/confirm password/i), 'password')
+    expect(screen.getByRole('button', { name: /set password/i })).toBeDisabled()
+
+    await user.type(pw, 'P1!')
+    await user.type(screen.getByLabelText(/confirm password/i), 'P1!')
+    expect(screen.getByRole('button', { name: /set password/i })).toBeEnabled()
+  })
+})
+
 describe('password validation', () => {
-  it('refuses a password shorter than the minimum', async () => {
+  it('names what a weak password is missing', async () => {
     const user = userEvent.setup()
     const pw = await renderReady()
 
     await user.type(pw, 'short')
     await user.type(screen.getByLabelText(/confirm password/i), 'short')
-    await user.click(screen.getByRole('button', { name: /set password/i }))
+    await user.keyboard('{Enter}')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/at least 8 characters/i)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /at least 8 characters, a capital letter, a number and a special character/i
+    )
     expect(setPassword).not.toHaveBeenCalled()
   })
 
@@ -84,8 +138,8 @@ describe('password validation', () => {
     const user = userEvent.setup()
     const pw = await renderReady()
 
-    await user.type(pw, 'correct-horse')
-    await user.type(screen.getByLabelText(/confirm password/i), 'correct-hoarse')
+    await user.type(pw, 'Correct-Horse1')
+    await user.type(screen.getByLabelText(/confirm password/i), 'Correct-Hoarse1')
     await user.click(screen.getByRole('button', { name: /set password/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/do not match/i)
@@ -97,9 +151,9 @@ describe('password validation', () => {
     const pw = await renderReady()
 
     expect(screen.getByRole('button', { name: /set password/i })).toBeDisabled()
-    await user.type(pw, 'correct-horse')
+    await user.type(pw, 'Correct-Horse1')
     expect(screen.getByRole('button', { name: /set password/i })).toBeDisabled()
-    await user.type(screen.getByLabelText(/confirm password/i), 'correct-horse')
+    await user.type(screen.getByLabelText(/confirm password/i), 'Correct-Horse1')
     expect(screen.getByRole('button', { name: /set password/i })).toBeEnabled()
   })
 })
@@ -110,11 +164,11 @@ describe('saving', () => {
     setPassword.mockResolvedValue({})
     const pw = await renderReady()
 
-    await user.type(pw, 'correct-horse')
-    await user.type(screen.getByLabelText(/confirm password/i), 'correct-horse')
+    await user.type(pw, 'Correct-Horse1')
+    await user.type(screen.getByLabelText(/confirm password/i), 'Correct-Horse1')
     await user.click(screen.getByRole('button', { name: /set password/i }))
 
-    await waitFor(() => expect(setPassword).toHaveBeenCalledWith('correct-horse'))
+    await waitFor(() => expect(setPassword).toHaveBeenCalledWith('Correct-Horse1'))
     // replace(), not assign() — the invite tokens must not stay in history
     expect(replace).toHaveBeenCalledWith('/')
   })
@@ -125,8 +179,8 @@ describe('saving', () => {
     setPassword.mockResolvedValue({})
     const pw = await renderReady()
 
-    await user.type(pw, 'correct-horse')
-    await user.type(screen.getByLabelText(/confirm password/i), 'correct-horse')
+    await user.type(pw, 'Correct-Horse1')
+    await user.type(screen.getByLabelText(/confirm password/i), 'Correct-Horse1')
     await user.click(screen.getByRole('button', { name: /set password/i }))
 
     await waitFor(() => expect(takeFlash()).toBe('Password changed.'))
@@ -137,8 +191,8 @@ describe('saving', () => {
     setPassword.mockRejectedValue(new Error('Password is too weak'))
     const pw = await renderReady()
 
-    await user.type(pw, 'correct-horse')
-    await user.type(screen.getByLabelText(/confirm password/i), 'correct-horse')
+    await user.type(pw, 'Correct-Horse1')
+    await user.type(screen.getByLabelText(/confirm password/i), 'Correct-Horse1')
     await user.click(screen.getByRole('button', { name: /set password/i }))
 
     await screen.findByRole('alert')
@@ -150,8 +204,8 @@ describe('saving', () => {
     setPassword.mockRejectedValue(new Error('Password is too weak'))
     const pw = await renderReady()
 
-    await user.type(pw, 'correct-horse')
-    await user.type(screen.getByLabelText(/confirm password/i), 'correct-horse')
+    await user.type(pw, 'Correct-Horse1')
+    await user.type(screen.getByLabelText(/confirm password/i), 'Correct-Horse1')
     await user.click(screen.getByRole('button', { name: /set password/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/too weak/i)

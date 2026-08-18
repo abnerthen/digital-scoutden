@@ -103,7 +103,9 @@ export async function strangerClient() {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const email = `stranger-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`
-  const { error } = await client.auth.signUp({ email, password: 'hunter2hunter2' })
+  // Satisfies auth.password_requirements in config.toml, which now mirrors
+  // production; a weaker one is rejected before the account exists.
+  const { error } = await client.auth.signUp({ email, password: 'Hunter2Hunter2!' })
   if (error) throw new Error(`Could not sign up a stranger: ${error.message}`)
   return client
 }
