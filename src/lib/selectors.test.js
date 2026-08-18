@@ -4,6 +4,7 @@ import {
   selectGroupsWithCheckouts,
   selectLowStock,
   selectTotalUnits,
+  memberCan,
 } from './selectors'
 import {
   items, tent, archivedLamp,
@@ -126,5 +127,42 @@ describe('selectTotalUnits', () => {
 
   it('is zero for an empty inventory', () => {
     expect(selectTotalUnits([])).toBe(0)
+  })
+})
+
+describe('memberCan', () => {
+  const roles = [
+    { name: 'troop_leader',  manages_inventory: true,  manages_members: true },
+    { name: 'quartermaster', manages_inventory: true,  manages_members: false },
+    { name: 'scout',         manages_inventory: false, manages_members: false },
+  ]
+
+  it('grants what the role allows', () => {
+    expect(memberCan({ role: 'troop_leader', active: true }, roles, 'manages_members')).toBe(true)
+    expect(memberCan({ role: 'quartermaster', active: true }, roles, 'manages_inventory')).toBe(true)
+  })
+
+  // Running the storeroom must not carry the power to promote yourself out of it.
+  it('withholds member management from a quartermaster', () => {
+    expect(memberCan({ role: 'quartermaster', active: true }, roles, 'manages_members')).toBe(false)
+  })
+
+  // Mirrors the `active` requirement in the Postgres predicates: someone who
+  // has left the troop keeps their role string but loses the capability.
+  it('withholds everything from an inactive member', () => {
+    expect(memberCan({ role: 'troop_leader', active: false }, roles, 'manages_members')).toBe(false)
+  })
+
+  it('withholds everything when there is no member at all', () => {
+    expect(memberCan(null, roles, 'manages_members')).toBe(false)
+    expect(memberCan(undefined, roles, 'manages_inventory')).toBe(false)
+  })
+
+  it('withholds everything for a role not in the table', () => {
+    expect(memberCan({ role: 'supreme_commander', active: true }, roles, 'manages_members')).toBe(false)
+  })
+
+  it('returns false rather than undefined, so callers can trust it', () => {
+    expect(memberCan({ role: 'scout', active: true }, [], 'manages_members')).toBe(false)
   })
 })

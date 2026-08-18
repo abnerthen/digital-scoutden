@@ -100,16 +100,47 @@ you never have to clear the hosted database to try something.
 
 ## The invite flow
 
-Members are invited by email and choose a password on `/auth/set-password`.
-Until the Edge Function that sends invites exists, trigger one by hand:
+Members are invited from the Members tab and choose a password on
+`/auth/set-password`. A member row and a login are separate things — most Scouts
+never sign in — so the tab shows which members have one and offers **✉ Invite**
+for those who do not. Only roles with `manages_members` see the button.
+
+Sending an invitation needs the `service_role` key, which bypasses RLS and must
+never reach a browser, so it goes through the `invite-member` Edge Function. The
+function checks `can_manage_members()` for the caller and reads the address from
+the database rather than trusting the request.
+
+### Running it locally
+
+```bash
+npx supabase functions serve      # serves every function, hot-reloads
+```
+
+Invitations then work from the app, and the emails land in Mailpit
+(http://127.0.0.1:54324). To skip the UI:
 
 ```bash
 npm run invite -- priya@troop.test
 ```
 
-It prints a ready-to-open link and drops the email in Mailpit. Invite tokens are
-**single use**, so run it again for a fresh one; it clears the pending auth user
-first. The script refuses to run against anything but a local stack.
+That prints a ready-to-open link. Invite tokens are **single use**, so run it
+again for a fresh one; it clears the pending auth user first, and refuses to run
+against anything but a local stack.
+
+### Deploying it
+
+```bash
+npx supabase functions deploy invite-member
+npx supabase secrets set SITE_URL=https://your-production-domain
+```
+
+`SITE_URL` is where the invite link lands; without it the function falls back to
+`http://localhost:5173`. `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY` are injected automatically — do not set them.
+
+`/auth/set-password` must also be in **Authentication → URL Configuration →
+Redirect URLs**, or GoTrue quietly redirects to the Site URL instead and the
+invitee lands in the app without a password.
 
 ---
 
@@ -217,11 +248,27 @@ rather than fail. Run `npx supabase start`.
 
 ---
 
+## Who may do what
+
+Authorisation is enforced by Postgres, not by the UI. Every predicate requires
+an **active** `members` row linked to the signed-in account, so an account with
+no member row — or a member who has left — can see nothing.
+
+| | items, stock, checkouts | members and roles | log |
+|---|---|---|---|
+| No member row | — | — | — |
+| Scout, committee member | read | read | read |
+| Quartermaster, assistant | **write** | read | append |
+| Troop leader, assistant, scouter | **write** | **write** | append |
+
+`public.roles` holds the vocabulary and the two capability flags. It has **no
+write policy at all** — roles change by migration only, because a role table
+anyone could edit would just move privilege escalation one table across.
+
+`log` has no UPDATE or DELETE policy for anyone. Corrections mean appending an
+entry, which is what a ledger has always meant.
+
 ## Known gaps
 
-- Row-level security currently grants any authenticated user full access to
-  every table. Role checks (`quartermaster`, `assistant_qm`) are enforced only
-  in the UI, so they are conveniences rather than controls. Replacing this with
-  role-aware policies is the next piece of work.
 - For Check-In, the requester cannot also be the returner.
 - Item images can be uploaded but not viewed in the item modal.

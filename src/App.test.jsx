@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
-  items, members, categories, locations, groups, openCheckout, roles,
+  items, members, categories, locations, groups, openCheckout, roles, QM,
 } from './test/fixtures'
 
 vi.mock('./lib/items', () => ({
@@ -22,7 +22,8 @@ vi.mock('./lib/items', () => ({
 }))
 vi.mock('./lib/groups', () => ({ getGroups: vi.fn(), saveGroup: vi.fn() }))
 vi.mock('./lib/log', () => ({ getLog: vi.fn(), writeLog: vi.fn() }))
-vi.mock('./lib/auth', () => ({ signOut: vi.fn() }))
+vi.mock('./lib/auth', () => ({ signOut: vi.fn(), getCurrentMember: vi.fn() }))
+vi.mock('./lib/invites', () => ({ inviteMember: vi.fn() }))
 vi.mock('./lib/transactions', () => ({
   getOpenTransactions: vi.fn(), createCheckout: vi.fn(), closeTransaction: vi.fn(),
 }))
@@ -48,6 +49,7 @@ import { getMembers, getInactiveMembers } from './lib/members'
 import { getCategories } from './lib/categories'
 import { getLocations } from './lib/locations'
 import { getRoles } from './lib/roles'
+import { getCurrentMember } from './lib/auth'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -60,6 +62,7 @@ beforeEach(() => {
   getCategories.mockResolvedValue(categories)
   getLocations.mockResolvedValue(locations)
   getRoles.mockResolvedValue(roles)
+  getCurrentMember.mockResolvedValue(QM)
 })
 
 async function renderApp() {

@@ -1,8 +1,10 @@
 import React from "react";
 import { ACCENT, ROLES, ACCENT2 } from "../../constants";
+import InviteButton from "../elements/InviteButton";
 
 export default function MembersTab({ members, inactiveMembers, showInactive, onToggleInactive, 
-    onAddMember, onEditMember, onRestore, onDeactivate }) {
+    onAddMember, onEditMember, onRestore, onDeactivate,
+    canManageMembers = false, onInvite }) {
 
   return (
           <>
@@ -169,6 +171,12 @@ export default function MembersTab({ members, inactiveMembers, showInactive, onT
                       <div style={{ fontWeight: 700, fontFamily: "'Playfair Display', serif", fontSize: 15 }}>{member.full_name}</div>
                       <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                         {member.email || "No email"}
+                        {/* members and auth.users are separate tables; most
+                            Scouts never sign in. Showing which is which turns
+                            an invisible mismatch into something actionable. */}
+                        {member.auth_user_id
+                          ? <span style={{ marginLeft: 8, color: ACCENT }} title="Can sign in">🔓 has login</span>
+                          : <span style={{ marginLeft: 8, color: "#bbb" }} title="Cannot sign in yet">no login</span>}
                       </div>
                     </div>
                     <span style={{
@@ -185,6 +193,9 @@ export default function MembersTab({ members, inactiveMembers, showInactive, onT
                     }}>
                       {ROLES.find(r => r.value === member.role)?.label || member.role}
                     </span>
+                  {canManageMembers && onInvite && !member.auth_user_id && (
+                    <InviteButton member={member} onInvite={onInvite} />
+                  )}
                   <button
                     onClick={() => onEditMember(member)}
                     style={{ padding: "6px 12px", background: "#e3f2fd", color: "#1565c0", border: "none", borderRadius: 7, fontWeight: 600, cursor: "pointer", fontSize: 12, marginRight: 6 }}>

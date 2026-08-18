@@ -44,6 +44,15 @@ export async function setPassword(password) {
   return data
 }
 
+/**
+ * The troop member behind the signed-in account, or null.
+ *
+ * maybeSingle rather than single: holding an account does not imply a member
+ * row. Someone invited whose row was since removed, or an account created
+ * before the roster existed, is signed in and legitimately has no member — and
+ * under the role policies they can see nothing. That is a state to render, not
+ * an error to throw.
+ */
 export async function getCurrentMember() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -51,7 +60,7 @@ export async function getCurrentMember() {
     .from('members')
     .select('*')
     .eq('auth_user_id', user.id)
-    .single()
+    .maybeSingle()
   if (error) throw error
   return data
 }

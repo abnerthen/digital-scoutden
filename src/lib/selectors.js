@@ -118,6 +118,19 @@ export function selectStoreroomCheckers(members, roles) {
   return members.filter(m => m.active && allowed.has(m.role));
 }
 
+/**
+ * Whether a member holds a capability, per the roles table.
+ *
+ * Mirrors can_manage_inventory() / can_manage_members() in Postgres, including
+ * the `active` requirement. This decides what the UI *offers*; the database
+ * decides what it *allows*. Both read the same flags, so they agree — but the
+ * database is the one that matters, and this is only ever a convenience.
+ */
+export function memberCan(member, roles, capability) {
+  if (!member?.active) return false;
+  return roles.find(r => r.name === member.role)?.[capability] ?? false;
+}
+
 /** Items at or below the low-stock threshold. */
 export function selectLowStock(items, threshold = 2) {
   return items.filter(i => !i.removed && i.quantity <= threshold);

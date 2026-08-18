@@ -31,4 +31,12 @@ export default defineConfig([
       }],
     },
   },
+  {
+    // Integration tests and the helper scripts run in Node, not a browser:
+    // they read process.env and shell out. Without this they fail no-undef.
+    files: ['tests/**/*.{js,mjs}', 'scripts/**/*.{js,mjs}', '*.config.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
 ])
