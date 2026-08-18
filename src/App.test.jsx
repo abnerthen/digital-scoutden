@@ -126,6 +126,24 @@ describe('inventory rendering', () => {
   })
 })
 
+describe('the signed-in member', () => {
+  it('names them in the header, with their role', async () => {
+    await renderApp()
+    expect(screen.getByText('Alex Tan')).toBeInTheDocument()
+    // Label comes from the roles table, not a hardcoded map.
+    expect(screen.getByText('Quartermaster')).toBeInTheDocument()
+  })
+
+  // An account with no member row sees an empty ledger under the RLS policies.
+  // Saying so beats leaving them to guess.
+  it('says so when the login is not on the roster', async () => {
+    getCurrentMember.mockResolvedValue(null)
+    await renderApp()
+    expect(screen.getByText(/not on the roster/i)).toBeInTheDocument()
+    expect(screen.queryByText('Alex Tan')).not.toBeInTheDocument()
+  })
+})
+
 describe('tabs', () => {
   it('has a Locations tab that lists locations', async () => {
     const user = userEvent.setup()

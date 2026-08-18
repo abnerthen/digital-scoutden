@@ -5,11 +5,6 @@ export const ACCENT2 = '#ff8f00';
 export const BG = '#f5f0e8';
 export const DARK = '#1a1a1a';
 
-// Supabase's own default minimum is 6; we ask for a little more. Raising this
-// past the project's Auth setting is safe, lowering it below would let the
-// client accept a password the server then rejects.
-export const MIN_PASSWORD_LENGTH = 8
-
 // Display labels for the role vocabulary. The authority on which roles exist —
 // and on what each may do — is the `roles` table; this is the UI's copy of the
 // names, in the table's sort_order. An integration test asserts the two agree,
